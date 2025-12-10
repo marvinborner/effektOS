@@ -638,11 +638,6 @@ def show(l: Array[Double]): String = show(l) { e => show(e) }
 def show(l: Array[Bool]): String = show(l) { e => show(e) }
 def show(l: Array[String]): String = show(l) { e => e }
 
-def println(l: Array[Int]): Unit = println(show(l))
-def println(l: Array[Double]): Unit = println(show(l))
-def println(l: Array[Bool]): Unit = println(show(l))
-def println(l: Array[String]): Unit = println(show(l))
-
 
 // Streaming
 // ---------

@@ -1,0 +1,23 @@
+import serial
+
+extern def printFramebuffer(value: String): Unit =
+  js "$effekt.println(${value})"
+  chez "(println_impl ${value})"
+  llvm """
+    call void @c_fb_println(%Pos ${value})
+    ret %Pos zeroinitializer ; Unit
+  """
+  vm "effekt::println(String)"
+
+def println(value: String): Unit = {
+  value.printFramebuffer()
+  list::collect[Char] { value.each }.foreach { ch =>
+    ch.putChar()
+  } // serial for debugging
+}
+
+def println(value: Int): Unit = println(value.show)
+def println(value: Unit): Unit = println(value.show)
+def println(value: Double): Unit = println(value.show)
+def println(value: Bool): Unit = println(value.show)
+def println(value: Byte): Unit = println(value.show)

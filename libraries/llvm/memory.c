@@ -58,9 +58,27 @@ int memcmp(const void *s1, const void *s2, size_t n)
 }
 
 static void *kheap = 0;
-void memory_init(void *heap)
+void memory_init()
 {
-	kheap = heap;
+	if (memmap_request.response == NULL) {
+		hcf();
+	}
+
+	size_t largest_memory_size = 0;
+	void *largest_memory_area = 0;
+
+	struct limine_memmap_response *memmap_response =
+		memmap_request.response;
+	for (size_t i = 0; i < memmap_response->entry_count; i++) {
+		struct limine_memmap_entry *e = memmap_response->entries[i];
+		if (e->type == LIMINE_MEMMAP_USABLE &&
+		    e->length > largest_memory_size) {
+			largest_memory_size = e->length;
+			largest_memory_area = (void *)e->base;
+		}
+	}
+
+	kheap = largest_memory_area;
 }
 
 void *malloc(size_t size)

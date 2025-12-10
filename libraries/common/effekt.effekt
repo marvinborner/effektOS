@@ -38,15 +38,6 @@ namespace llvm {
 // Showing and debugging
 // =====================
 
-extern def println(value: String): Unit =
-  js "$effekt.println(${value})"
-  chez "(println_impl ${value})"
-  llvm """
-    call void @c_io_println(%Pos ${value})
-    ret %Pos zeroinitializer ; Unit
-  """
-  vm "effekt::println(String)"
-
 extern jsNode """
 $effekt.readln = function readln$impl(callback) {
   const readline = require('node:readline').createInterface({
@@ -67,12 +58,6 @@ extern def readln() at async: String =
     tail call void @resume_Pos(%Stack %stack, %Pos %result)
     ret void
   """
-
-def println(value: Int): Unit = println(value.show)
-def println(value: Unit): Unit = println(value.show)
-def println(value: Double): Unit = println(value.show)
-def println(value: Bool): Unit = println(value.show)
-def println(value: Byte): Unit = println(value.show)
 
 extern def show(value: Int) at {}: String =
   js "'' + ${value}"
@@ -121,11 +106,6 @@ extern def show(value: Byte) at {}: String =
 extern def genericShow[R](value: R) at {}: String =
   js "$effekt.show(${value})"
   chez "(show_impl ${value})"
-
-extern def inspect[R](value: R) at io: Unit =
-  js { println(genericShow(value)) }
-  chez { println(genericShow(value)) }
-  vm "effekt::inspect(Any)"
 
 
 // Strings
@@ -218,8 +198,6 @@ def show(o: Ordering): String = o match {
   case Equal() => "Equal()"
   case Greater() => "Greater()"
 }
-
-def println(o: Ordering): Unit = println(o.show)
 
 
 // Comparison ops

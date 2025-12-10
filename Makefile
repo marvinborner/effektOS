@@ -1,6 +1,6 @@
 QEMU=qemu-system-x86_64
 LIBRARY := libraries/common/
-EFFEKTFLAGS := --build --backend llvm --optimize --freestanding --ir-write-all -l $(LIBRARY) --clang-includes limine.h
+EFFEKTFLAGS := --build --backend llvm --optimize --baremetal --ir-write-all -l $(LIBRARY) --clang-includes limine.h --includes libraries/baremetal/
 
 all: image.hdd
 
@@ -8,7 +8,7 @@ libraries/limine.h:
 	curl -Lo $@ https://codeberg.org/Limine/limine-protocol/raw/branch/trunk/include/limine.h
 
 out/main: libraries/limine.h
-	effekt $(EFFEKTFLAGS) src/main.effekt
+	effekt src/main.effekt $(EFFEKTFLAGS)
 
 ovmf/OVMF.fd:
 	mkdir -p ovmf

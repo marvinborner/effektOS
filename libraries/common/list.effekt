@@ -925,11 +925,6 @@ def show(l: List[Double]): String = show(l) { e => show(e) }
 def show(l: List[Bool]): String = show(l) { e => show(e) }
 def show(l: List[String]): String = show(l) { e => e }
 
-def println(l: List[Int]): Unit = println(show(l))
-def println(l: List[Double]): Unit = println(show(l))
-def println(l: List[Bool]): Unit = println(show(l))
-def println(l: List[String]): Unit = println(show(l))
-
 
 // Streaming
 // ---------

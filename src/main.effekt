@@ -1,4 +1,21 @@
+import serial
+import framebuffer
+
+def header() = {
+  val logo = """
+  _____     ______  __  __     _    _
+ (_____)   |  ____|/ _|/ _|   | |  | |
+   ___     | |__  | |_| |_ ___| | _| |_
+  (___)    |  __| |  _|  _/ _ \ |/ / __|
+  _____    | |____| | | ||  __/   <| |_
+ (_____)   |______|_| |_| \___|_|\_\\__|
+"""
+  println(logo)
+}
+
 def main() = {
-  println("hello from effekt!")
-  list::println(collect[String] { ["1", "2", "3"].each })
+  initSerial()
+
+  header()
+  <>
 }
