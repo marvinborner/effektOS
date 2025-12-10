@@ -1,12 +1,13 @@
 // modified from limine/test/limine (Mintsuki, BSD)
 
 #define REQUEST __attribute__((section(".limine_requests")))
+#define PACKED __attribute__((packed))
 
 __attribute__((cold)) void hcf(void)
 {
-	__asm__("cli");
+	__asm__ volatile("cli");
 	for (;;) {
-		__asm__("hlt");
+		__asm__ volatile("hlt");
 	}
 }
 
@@ -35,13 +36,17 @@ REQUEST static volatile struct limine_memmap_request memmap_request = {
 #include "panic.c"
 #include "../baremetal/framebuffer.c"
 
+#include "../baremetal/x86/gdt.c"
+#include "../baremetal/x86/interrupts.c"
+
 extern void effektMain();
 
 void kmain(void);
 void kmain(void)
 {
-	fb_init();
+	/* gdt_init(); */ // TODO: doesn't work (limine's is fine?)
 	memory_init();
+	fb_init();
 
 	effektMain();
 	hcf();

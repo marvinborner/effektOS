@@ -1,3 +1,19 @@
-def init() = {
-  ()
+import x86/pic
+import framebuffer
+
+extern llvm """
+  declare %Pos @c_idt_init(%Pos)
+"""
+
+extern def initIDT(callback: Int => Unit at {io, global}) at {io}: Unit =
+  llvm """
+    call void @c_idt_init(%Pos ${callback})
+    ret %Pos zeroinitializer
+  """
+
+def init() at {io}: Unit = {
+  initIDT(box { i =>
+    println("new interrupt: ${i.show}")
+    pic::ack(i)
+  })
 }

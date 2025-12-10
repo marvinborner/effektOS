@@ -1,5 +1,6 @@
 import x86/pic
 import x86/serial
+import x86/commands
 import x86/interrupts
 import framebuffer
 
@@ -15,11 +16,16 @@ def header() = {
   println(logo)
 }
 
+def loop(): Unit = {
+  halt()
+  loop()
+}
+
 def main() = {
   serial::init()
-  pic::init()
   interrupts::init()
+  pic::init()
 
   header()
-  <>
+  loop() 
 }

@@ -7,18 +7,24 @@ all: image.hdd
 libraries/limine.h:
 	curl -Lo $@ https://codeberg.org/Limine/limine-protocol/raw/branch/trunk/include/limine.h
 
-out/main: libraries/limine.h
+out/interrupts.o: libraries/baremetal/x86/interrupts.asm
+	nasm -f elf64 libraries/baremetal/x86/interrupts.asm -o out/interrupts.o
+
+out/main.o: libraries/limine.h
 	effekt src/main.effekt $(EFFEKTFLAGS)
+
+out/effektos: out/main.o out/interrupts.o
+	ld -m elf_x86_64 -nostdlib -static -z max-page-size=0x1000 --gc-sections -T linker.lds -o $@ out/main.o out/main.ll.o out/interrupts.o
 
 ovmf/OVMF.fd:
 	mkdir -p ovmf
 	cd ovmf && curl -Lo OVMF-X64.zip https://efi.akeo.ie/OVMF/OVMF-X64.zip && unzip OVMF-X64.zip
 
-image.iso: out/main
+image.iso: out/effektos
 	make -C limine
 	mkdir -p iso_root
 	mkdir -p iso_root/boot
-	cp -v out/main iso_root/boot/effektos
+	cp -v out/effektos iso_root/boot/effektos
 	mkdir -p iso_root/boot/limine
 	cp -v limine.conf limine/limine-bios.sys limine/limine-bios-cd.bin limine/limine-uefi-cd.bin iso_root/boot/limine/
 	mkdir -p iso_root/EFI/BOOT
@@ -27,7 +33,7 @@ image.iso: out/main
 	xorriso -as mkisofs -R -r -J -b boot/limine/limine-bios-cd.bin -no-emul-boot -boot-load-size 4 -boot-info-table -hfsplus -apm-block-size 2048 --efi-boot boot/limine/limine-uefi-cd.bin -efi-boot-part --efi-boot-image --protective-msdos-label iso_root -o image.iso
 	./limine/limine bios-install image.iso
 
-image.hdd: out/main
+image.hdd: out/effektos
 	rm -f image.hdd
 	dd if=/dev/zero bs=1M count=0 seek=64 of=image.hdd
 	PATH=$$PATH:/usr/sbin:/sbin sgdisk image.hdd -n 1:2048 -t 1:ef00 -m 1
@@ -35,7 +41,7 @@ image.hdd: out/main
 	./limine/limine bios-install image.hdd
 	mformat -i image.hdd@@1M
 	mmd -i image.hdd@@1M ::/EFI ::/EFI/BOOT ::/boot ::/boot/limine
-	mcopy -i image.hdd@@1M out/main ::/boot/effektos
+	mcopy -i image.hdd@@1M out/effektos ::/boot/effektos
 	mcopy -i image.hdd@@1M limine.conf limine/limine-bios.sys ::/boot/limine
 	mcopy -i image.hdd@@1M limine/BOOTX64.EFI ::/EFI/BOOT
 	mcopy -i image.hdd@@1M limine/BOOTIA32.EFI ::/EFI/BOOT

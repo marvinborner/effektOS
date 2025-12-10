@@ -98,11 +98,22 @@ char *c_bytearray_into_nullterminated_string(const struct Pos arr)
 }
 
 // TODO do this in Effekt
-/* struct Pos c_bytearray_show_Int(const Int n) { */
-/*     char str[24]; */
-/*     snprintf(str, sizeof(str), "%" PRId64, n); */
-/*     return c_bytearray_from_nullterminated_string(str); */
-/* } */
+struct Pos c_bytearray_show_Int(Int n)
+{
+	if (!n)
+		return c_bytearray_from_nullterminated_string("0");
+
+	int i;
+	char buf[21] = { 0 };
+
+	for (i = 19; n; i--) {
+		buf[i] = (n % 10) + 0x30;
+		n = n / 10;
+	}
+
+	i++;
+	return c_bytearray_from_nullterminated_string(buf + i);
+}
 
 // TODO do this in Effekt
 struct Pos c_bytearray_show_Char(const uint64_t n)

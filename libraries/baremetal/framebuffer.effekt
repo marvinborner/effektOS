@@ -1,5 +1,9 @@
 import x86/serial
 
+extern llvm """
+  declare %Pos @c_fb_println(%Pos)
+"""
+
 extern def printFramebuffer(value: String): Unit =
   js "$effekt.println(${value})"
   chez "(println_impl ${value})"

@@ -1,3 +1,9 @@
+extern def halt() at io: Unit =
+  llvm """
+    call void asm sideeffect "hlt", ""()
+    ret %Pos zeroinitializer
+  """
+
 extern def outb(port: Int, data: Byte) at io: Unit =
   llvm """
     %port16 = trunc i64 ${port} to i16
