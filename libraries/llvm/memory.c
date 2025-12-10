@@ -1,3 +1,5 @@
+// modified from limine/test/memory (Mintsuki, BSD)
+
 #include <stddef.h>
 #include <stdint.h>
 
@@ -53,4 +55,29 @@ int memcmp(const void *s1, const void *s2, size_t n)
 	}
 
 	return 0;
+}
+
+static void *kheap = 0;
+void memory_init(void *heap)
+{
+	kheap = heap;
+}
+
+void *malloc(size_t size)
+{
+	void *ptr = kheap;
+	kheap = (uint8_t *)kheap + size;
+	return ptr;
+}
+
+void *realloc(void *ptr, size_t size)
+{
+	void *new = malloc(size);
+	memcpy(new, ptr, size); // might leak but idc
+	return new;
+}
+
+void free(void *ptr)
+{
+	return;
 }

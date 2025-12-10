@@ -1,3 +1,4 @@
 def main() = {
-  ()
+  println("hello from effekt!")
+  list::println(collect[String] { ["1", "2", "3"].each })
 }

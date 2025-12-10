@@ -1,3 +1,5 @@
+// modified from limine/test/limine (Mintsuki, BSD)
+
 static struct flanterm_context *ft_ctx = 0;
 
 #include "memory.c"
@@ -5,6 +7,11 @@ static struct flanterm_context *ft_ctx = 0;
 #include "../flanterm/src/flanterm.c"
 #include "../flanterm/src/flanterm_backends/fb.c"
 #include "e9print.c"
+
+#include "types.c"
+#include "bytearray.c"
+#include "io.c"
+#include "panic.c"
 
 #define REQUEST __attribute__((section(".limine_requests")))
 
@@ -22,19 +29,11 @@ REQUEST static volatile struct limine_memmap_request memmap_request = {
 	.response = NULL
 };
 
-static void hcf(void)
-{
-	__asm__("cli");
-	for (;;) {
-		__asm__("hlt");
-	}
-}
-
 void kmain(void);
 void kmain(void)
 {
 	e9_init();
-	e9_print("hello, world\n");
+	e9_printf("hello, world");
 
 	struct limine_framebuffer *fb =
 		framebuffer_request.response->framebuffers[0];
@@ -46,6 +45,28 @@ void kmain(void)
 				  fb->blue_mask_shift, NULL, NULL, NULL, NULL,
 				  NULL, NULL, NULL, NULL, 0, 0, 1, 0, 0, 0, 0);
 
-	e9_print("Framebuffer initialized!\n");
+	if (memmap_request.response == NULL) {
+		e9_printf("Memory map not passed");
+		hcf();
+	}
+
+	size_t largest_memory_size = 0;
+	void *largest_memory_area = 0;
+
+	struct limine_memmap_response *memmap_response =
+		memmap_request.response;
+	for (size_t i = 0; i < memmap_response->entry_count; i++) {
+		struct limine_memmap_entry *e = memmap_response->entries[i];
+		if (e->type == LIMINE_MEMMAP_USABLE &&
+		    e->length > largest_memory_size) {
+			largest_memory_size = e->length;
+			largest_memory_area = (void *)e->base;
+		}
+	}
+
+	memory_init(largest_memory_area);
+
+	effektMain();
+	e9_print("Effekt returned, hcfing!\n");
 	hcf();
 }

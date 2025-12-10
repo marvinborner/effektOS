@@ -3,6 +3,10 @@
 declare i64 @c_get_argc()
 declare %Pos @c_get_arg(i64)
 
+declare void @c_io_println(%Pos)
+declare %Pos @c_io_readln()
+declare %Double @c_io_random()
+
 declare void @hole(i8*) cold
 declare void @duplicated_prompt() cold
 
@@ -37,3 +41,4 @@ declare %Int @c_bytearray_compare(%Pos, %Pos)
 
 declare %Pos @c_bytearray_substring(%Pos, i64, i64)
 declare %Int @c_bytearray_character_at(%Pos, i64)
+
