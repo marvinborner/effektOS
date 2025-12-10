@@ -1,17 +1,10 @@
-val PORT = 1016
+import x86/commands
 
-extern def outb(port: Int, data: Byte) at io: Unit =
-  llvm """
-    %port16 = trunc i64 ${port} to i16
-    call void asm sideeffect "outb %al, %dx",
-      "{dx},{al},~{dirflag},~{fpsr},~{flags}"
-      (i16 %port16, i8 ${data})
-    ret %Pos zeroinitializer
-  """
+val PORT = 1016
 
 def putChar(ch: Char) = outb(PORT, ch.toInt.toByte)
 
-def initSerial() = {
+def init() = {
 	outb(PORT + 1, 0.toByte)
 	outb(PORT + 3, 128.toByte)
 	outb(PORT + 0, 3.toByte)

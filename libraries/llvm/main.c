@@ -26,14 +26,14 @@ REQUEST static volatile struct limine_memmap_request memmap_request = {
 	.response = 0
 };
 
-#include "memory.c"
+#include "../baremetal/memory.c"
 #include "../flanterm/src/flanterm.c"
 #include "../flanterm/src/flanterm_backends/fb.c"
 
 #include "types.c"
 #include "bytearray.c"
-#include "fb.c"
 #include "panic.c"
+#include "../baremetal/framebuffer.c"
 
 extern void effektMain();
 

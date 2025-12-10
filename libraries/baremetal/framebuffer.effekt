@@ -1,4 +1,4 @@
-import serial
+import x86/serial
 
 extern def printFramebuffer(value: String): Unit =
   js "$effekt.println(${value})"

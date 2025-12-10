@@ -1,0 +1,56 @@
+import x86/commands
+
+val PIC1 = 32
+val PIC1_COMMAND = PIC1
+val PIC1_OFFSET = 32
+val PIC1_DATA = PIC1 + 1
+
+val PIC2 = 160
+val PIC2_COMMAND = PIC2
+val PIC2_OFFSET = 40
+val PIC2_DATA = PIC2 + 1
+
+val ICW1_ICW4 = 1
+val ICW1_INIT = 16
+
+extern def wait() at io: Unit =
+  llvm """
+	  call void asm sideeffect "jmp 1f\0A\091:\0A\09jmp 2f\0A\092:", "~{dirflag},~{fpsr},~{flags}"()
+    ret %Pos zeroinitializer
+  """
+
+def init() = {
+  // Initialize
+	outb(PIC1_COMMAND, ICW1_INIT.bitwiseOr(ICW1_ICW4))
+	wait()
+	outb(PIC2_COMMAND, ICW1_INIT.bitwiseOr(ICW1_ICW4))
+	wait()
+
+	// Remap
+	outb(PIC1_DATA, PIC1_OFFSET)
+	wait()
+	outb(PIC2_DATA, PIC2_OFFSET)
+	wait()
+
+	outb(PIC1_DATA, 4)
+	wait()
+	outb(PIC2_DATA, 2)
+	wait()
+
+	// Set 8086 mode
+	outb(PIC1_DATA, 1)
+	wait()
+	outb(PIC2_DATA, 1)
+	wait()
+
+	outb(PIC1_DATA, 0)
+	wait()
+	outb(PIC2_DATA, 0)
+	wait()
+}
+
+def ack(n: Int) = {
+	if (n >= 40) outb(PIC2, 32)
+
+	outb(PIC1, 32)
+}

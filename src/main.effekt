@@ -1,4 +1,6 @@
-import serial
+import x86/pic
+import x86/serial
+import x86/interrupts
 import framebuffer
 
 def header() = {
@@ -14,7 +16,9 @@ def header() = {
 }
 
 def main() = {
-  initSerial()
+  serial::init()
+  pic::init()
+  interrupts::init()
 
   header()
   <>
