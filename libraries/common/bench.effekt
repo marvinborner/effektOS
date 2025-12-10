@@ -1,0 +1,78 @@
+module bench
+
+type Nanos = Int
+
+/// The current time (since UNIX Epoch) in nanoseconds.
+///
+/// The actual precision varies across the different backends.
+/// - js: Milliseconds
+/// - chez: Microseconds
+extern def timestamp() at io: Nanos =
+  js "Date.now() * 1000000"
+  chez "(timestamp)"
+  llvm """
+    %time_ptr = alloca { i64, i64 }
+    call i32 @clock_gettime(i32 0, ptr %time_ptr)
+    %time = load {i64, i64}, ptr %time_ptr
+    %time_seconds = extractvalue {i64, i64} %time, 0
+    %time_nanoseconds = extractvalue {i64, i64} %time, 1
+    %time_seconds_nanoseconds = mul nsw i64 %time_seconds, 1000000000
+    %result = add nsw i64 %time_seconds_nanoseconds, %time_nanoseconds
+    ret %Int %result
+  """
+
+extern llvm """
+  declare i32 @clock_gettime(i32, ptr)
+"""
+
+// This should not be needed when using NodeJS 16.x or newer.
+extern jsNode """
+  const { performance } = require('node:perf_hooks');
+"""
+
+/// High-precision timestamp in nanoseconds that should be for measurements.
+///
+/// This timestamp should only be used for **relative** measurements,
+/// as gives no guarantees on the absolute time (unlike a UNIX timestamp).
+extern def relativeTimestamp() at io: Nanos =
+  js "Math.round(performance.now() * 1000000)"
+  default { timestamp() }
+
+type Duration = Int
+
+namespace Duration {
+  def diff(fromNanos: Nanos, toNanos: Nanos): Duration = toNanos - fromNanos
+}
+
+/// Runs the block and returns the time in nanoseconds
+def timed { block: => Unit }: Duration = {
+  val before = relativeTimestamp()
+  block()
+  val after = relativeTimestamp()
+  Duration::diff(before, after)
+}
+
+def measure(warmup: Int, iterations: Int) { block: => Unit }: Unit = {
+  def run(n: Int, report: Bool): Unit = {
+    if (n <= 0) { () } else {
+      val time = timed { block() };
+      if (report) { println(time) } else { () };
+      run(n - 1, report)
+    }
+  }
+  run(warmup, false)
+  run(iterations, true)
+}
+
+/// Takes a duration in nanoseconds and formats it in milliseconds with precision of two decimal digits.
+def formatMs(nanos: Nanos): String = {
+  val micros = nanos / 1000000
+  val sub = (nanos.mod(1000000).toDouble / 10000.0).round
+
+  if (sub == 100) {
+    // overflow because of rounding
+    (micros + 1).show ++ ".0ms"
+  } else {
+    micros.show ++ "." ++ sub.show ++ "ms"
+  }
+}

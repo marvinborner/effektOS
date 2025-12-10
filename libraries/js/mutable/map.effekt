@@ -1,0 +1,31 @@
+module mutable/map
+
+import array
+
+// A mutable map, backed by a JavaScript Map.
+extern type Map[K, V]
+
+extern def emptyMap[K, V]() at io: Map[K, V] =
+  js "new Map()"
+
+def get[K, V](m: Map[K, V], key: K): Option[V] =
+  undefinedToOption(m.unsafeGet(key))
+
+extern def unsafeGet[K, V](m: Map[K, V], key: K) at {}: V =
+  js "${m}.get(${key})"
+
+extern js """
+function map$update(m, key, value) {
+  m.set(key, value);
+  return $effekt.unit
+}
+"""
+
+extern def update[K, V](m: Map[K, V], key: K, value: V) at io: Unit =
+  js "map$update(${m}, ${key}, ${value})"
+
+extern def values[K, V](map: Map[K, V]) at {}: Array[V] =
+  js "Array.from(${map}.values())"
+
+extern def keys[K, V](map: Map[K, V]) at {}: Array[K] =
+  js "Array.from(${map}.keys())"
