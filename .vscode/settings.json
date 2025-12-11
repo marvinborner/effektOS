@@ -1,0 +1,7 @@
+{
+    "effekt.backend": "llvm",
+    "effekt.inlayHints.captures": false,
+    "effekt.inlayHints.returnTypes": false,
+    "effekt.lib": "libraries/common/",
+    "effekt.flags": "--clang-includes limine.h --includes src/ libraries/baremetal/"
+}
