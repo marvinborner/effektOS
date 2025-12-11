@@ -4,6 +4,7 @@ import x86/serial
 import x86/commands
 import x86/interrupts
 import framebuffer
+import interrupt
 
 // import src/ps2/keyboard
 
@@ -19,30 +20,43 @@ def header() = {
   println(logo)
 }
 
-def dispatch { prog: => Unit / Request }: Unit / { Exception[PS2Keyboard], Exception[TimerTick], Exception[RuntimeError] } = {
+def dispatch { prog: => Nothing / Request }: Nothing / { Interrupt[PS2Keyboard], Interrupt[TimerTick] } = {
   try prog()
   with Request {
     def trap(n: Int) = {
       resume(println("it's a trap! ${n.show}"))
     }
     def event(n: Int) = n match {
-      case 0 => resume(do raise(TimerTick(), "timer ticked"))
+      case 0 => resume(do interrupt(TimerTick()))
+      case 1 => resume(do interrupt(PS2Keyboard()))
       case _ => resume(println("unknown event: ${n.show}"))
     }
     def special(n: Int) = n match {
       case _ => {
-        resume(println("unknown special request: ${n.show}"))
+        // resume(do interrupt(RuntimeError()))
+        <>
       }
     }
   }
 }
 
-def ps2Handler() = ()
+def keyboardHandler(): Unit / emit[Char] = {
+  val byte = inb(96)
+  <>
+}
 
-def main() = {
-  with on[RuntimeError].panic
-  with on[TimerTick].ignore
-  with on[PS2Keyboard].default { ps2Handler }
+def os { init: => Nothing / { emit[Char] }}: Nothing = {
+  try init()
+  with emit[Char] { ch =>
+    println(ch)
+  }
+}
+
+def main(): Nothing = {
+  with os
+
+  with interrupt::on[TimerTick].ignore
+  with interrupt::on[PS2Keyboard].handle {keyboardHandler}
   with dispatch
 
   serial::init()
@@ -52,6 +66,4 @@ def main() = {
   val inbox = interrupts::init()
   pit::init(1000)
   interrupts::idle(inbox) 
-
-  hcf() // should never run
 }

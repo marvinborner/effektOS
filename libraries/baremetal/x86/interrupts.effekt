@@ -55,6 +55,7 @@ def idle(inbox: Ref[List[Int]]) at {io, global}: Nothing / Request = {
 
   if (interrupts.nonEmpty) {
     interrupts.foreach { int =>
+      // do event(int - 32)
       if (int < 32) {
         do trap(int)
       } else if (int < 48) {
