@@ -1,0 +1,8 @@
+import x86/commands
+
+def init(hz: Int) = {
+  val divisor = 3579545 / 3 / hz
+  outb(67, 54) // CTR, RW, MODE, BCD
+  outb(64, divisor.bitwiseAnd(255))
+  outb(64, divisor.bitwiseShr(8))
+}

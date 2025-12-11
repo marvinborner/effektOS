@@ -8,18 +8,9 @@
 #define INT_USER 0x60
 
 struct int_frame {
-	uint32_t gs, fs, es, ds;
-	uint32_t edi, esi, ebp, esp, ebx, edx, ecx, eax;
-	uint32_t int_no, err_code;
-	uint32_t eip, cs, eflags;
-} PACKED;
-
-struct int_frame_user {
-	uint32_t gs, fs, es, ds;
-	uint32_t edi, esi, ebp, esp, ebx, edx, ecx, eax;
-	uint32_t int_no, err_code;
-	uint32_t eip, cs, eflags;
-	uint32_t useresp, ss;
+    uint64_t r15, r14, r13, r12, r11, r10, r9, r8;
+    uint64_t rbp, rdi, rsi, rdx, rcx, rbx, rax;
+    uint64_t int_no, err_code, rip, cs, rflags, rsp, ss;
 } PACKED;
 
 struct idt_entry {
@@ -54,30 +45,42 @@ void idt_set_descriptor(uint8_t vector, void *isr, uint8_t flags)
 	descriptor->zero = 0;
 }
 
-extern void *isr_stub_table[];
+extern void *int_table[];
 
 static struct Pos effekt_interrupt_handler;
+
+void c_idt_install_handler(struct Pos callback) {
+	effekt_interrupt_handler = callback;
+}
 
 void c_idt_init(struct Pos);
 void c_idt_init(struct Pos callback)
 {
-	effekt_interrupt_handler = callback;
+	c_idt_install_handler(callback);
 
 	idt_ptr.base = &idt;
 	idt_ptr.size = (uint16_t)sizeof(idt) - 1;
 
-	for (uint8_t vector = 0; vector < 32; vector++)
-		idt_set_descriptor(vector, isr_stub_table[vector], INT_GATE);
+	for (int i = 0; i < 256; i++) {
+		idt_set_descriptor(i, int_table[i], INT_GATE);
+	}
 
 	__asm__ volatile("lidt %0" : : "m"(idt_ptr));
 	__asm__ volatile("sti");
 }
 
-void *interrupt_handler(struct int_frame *frame);
-void *interrupt_handler(struct int_frame *frame)
+void irq_handler(struct int_frame *);
+void irq_handler(struct int_frame *frame)
 {
 	run_Int(effekt_interrupt_handler, frame->int_no);
-	return frame;
+	fb_print("run done");
+}
+
+void except_handler(struct int_frame *);
+void except_handler(struct int_frame *frame)
+{
+	run_Int(effekt_interrupt_handler, frame->int_no);
+	fb_print("run done");
 }
 
 #endif

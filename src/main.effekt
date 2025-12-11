@@ -1,8 +1,11 @@
 import x86/pic
+import x86/pit
 import x86/serial
 import x86/commands
 import x86/interrupts
 import framebuffer
+
+// import src/ps2/keyboard
 
 def header() = {
   val logo = """
@@ -16,16 +19,38 @@ def header() = {
   println(logo)
 }
 
-def loop(): Unit = {
-  halt()
-  loop()
+def requestDispatch { prog: => Unit / Request }: Unit / { Exception[PS2Keyboard], Exception[TimerTick], Exception[RuntimeError] } = {
+  try prog()
+  with Request {
+    def trap(n: Int) = {
+      println("it's a trap! ${n.show}")
+    }
+    def event(n: Int) = n match {
+      case 0 => do raise(TimerTick(), "timer ticked")
+      case _ => println("unknown event: ${n.show}")
+    }
+    def special(n: Int) = n match {
+      case _ => {
+        println("unknown special request: ${n.show}")
+      }
+    }
+  }
 }
 
-def main() = {
-  serial::init()
-  interrupts::init()
-  pic::init()
+def ps2Handler() = ()
 
+def main() = {
+  with on[RuntimeError].panic
+  with on[TimerTick].report
+  with on[PS2Keyboard].default { ps2Handler }
+  with requestDispatch
+
+  serial::init()
   header()
-  loop() 
+
+  pic::init()
+  val inbox = interrupts::init()
+  // pit::init(1000)
+  interrupts::idle(inbox) 
+  hcf()
 }

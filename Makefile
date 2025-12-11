@@ -1,6 +1,6 @@
 QEMU=qemu-system-x86_64
 LIBRARY := libraries/common/
-EFFEKTFLAGS := --build --backend llvm --optimize --baremetal --ir-write-all -l $(LIBRARY) --clang-includes limine.h --includes libraries/baremetal/
+EFFEKTFLAGS := --build --backend llvm --no-optimize --baremetal -l $(LIBRARY) --clang-includes limine.h --includes libraries/baremetal/
 
 all: image.hdd
 
@@ -47,7 +47,10 @@ image.hdd: out/effektos
 	mcopy -i image.hdd@@1M limine/BOOTIA32.EFI ::/EFI/BOOT
 
 qemu-disk: image.hdd
-	$(QEMU) -M q35 -m 2G -hda image.hdd -serial stdio
+	$(QEMU) -M q35 -m 2G -hda image.hdd -serial stdio -vga std
+
+qemu-disk-debug: image.hdd
+	$(QEMU) -M q35 -m 2G -hda image.hdd -serial stdio -vga std -no-reboot -d guest_errors,unimp,pcall,int,exec -D qemu.log
 
 qemu-iso: image.iso
 	$(QEMU) -M q35 -m 2G -cdrom image.iso -boot d -serial stdio

@@ -1,4 +1,5 @@
 import x86/commands
+import framebuffer
 
 val PIC1 = 32
 val PIC1_COMMAND = PIC1

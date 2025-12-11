@@ -7,13 +7,14 @@
 
 __attribute__((cold)) void hole(const char *message)
 {
-	/* e9_printf("PANIC: %s not implemented yet\n", message); */
+	(void)message;
+	fb_print("PANIC: not implemented yet\n");
 	hcf();
 }
 
 __attribute__((cold)) void duplicated_prompt()
 {
-	/* e9_printf("PANIC: Continuation invoked itself\n"); */
+	fb_print("PANIC: Continuation invoked itself\n");
 	hcf();
 }
 

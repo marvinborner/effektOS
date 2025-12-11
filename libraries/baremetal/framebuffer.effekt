@@ -18,6 +18,7 @@ def println(value: String): Unit = {
   list::collect[Char] { value.each }.foreach { ch =>
     ch.putChar()
   } // serial for debugging
+  '\n'.putChar()
 }
 
 def println(value: Int): Unit = println(value.show)

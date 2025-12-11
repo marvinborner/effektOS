@@ -1,3 +1,9 @@
+extern def hcf() at io: Unit =
+  llvm """
+    call void @hcf()
+    ret %Pos zeroinitializer
+  """
+
 extern def halt() at io: Unit =
   llvm """
     call void asm sideeffect "hlt", ""()

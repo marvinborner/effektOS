@@ -1,19 +1,69 @@
-import x86/pic
 import framebuffer
+import x86/pic
+import x86/commands
+
+record TimerTick()
+record PS2Keyboard()
+
+interface Request {
+  def trap(n: Int): Unit
+  def event(n: Int): Unit
+  def special(n: Int): Unit
+}
 
 extern llvm """
   declare %Pos @c_idt_init(%Pos)
+  declare %Pos @c_idt_install_handler(%Pos)
 """
 
-extern def initIDT(callback: Int => Unit at {io, global}) at {io}: Unit =
+extern def installHandler(callback: Int => Unit at {io, global}) at {io}: Unit =
   llvm """
-    call void @c_idt_init(%Pos ${callback})
+    call void @c_idt_install_handler(%Pos ${callback})
     ret %Pos zeroinitializer
   """
 
-def init() at {io}: Unit = {
-  initIDT(box { i =>
-    println("new interrupt: ${i.show}")
+extern def initIDT() at {io}: Unit =
+  llvm """
+    call void @c_idt_init()
+    ret %Pos zeroinitializer
+  """
+
+def newHandler(inbox: Ref[List[Int]]): Int => Unit at {io, global} = {
+  val handler: Int => Unit at {io, global} = box { i =>
+    if (i < 32) println("fault: ${i.show}") // probably non-recoverable!
+    inbox.set(Cons(i, inbox.get))
     pic::ack(i)
-  })
+    installHandler(inbox.newHandler())
+  }
+  handler
+}
+
+def init(): Ref[List[Int]] = {
+  initIDT()
+
+  val inbox = ref[List[Int]](Nil())
+  installHandler(inbox.newHandler)
+  inbox
+}
+
+// inspired by the react-ish framework by @jiribenes
+def idle(inbox: Ref[List[Int]]) at {io, global}: Unit / Request = {
+  halt() // until interrupt
+
+  val interrupts = inbox.get.reverse
+  inbox.set(Nil())
+
+  if (interrupts.nonEmpty) {
+    interrupts.foreach { int =>
+      if (int < 32) {
+        do trap(int)
+      } else if (int < 48) {
+        do event(int - 32)
+      } else if (int >= 128) {
+        do special(int - 128)
+      }
+    }
+  }
+
+  idle(inbox)
 }

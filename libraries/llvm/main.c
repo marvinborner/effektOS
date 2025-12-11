@@ -33,8 +33,8 @@ REQUEST static volatile struct limine_memmap_request memmap_request = {
 
 #include "types.c"
 #include "bytearray.c"
-#include "panic.c"
 #include "../baremetal/framebuffer.c"
+#include "panic.c"
 
 #include "../baremetal/x86/gdt.c"
 #include "../baremetal/x86/interrupts.c"
@@ -44,10 +44,11 @@ extern void effektMain();
 void kmain(void);
 void kmain(void)
 {
-	/* gdt_init(); */ // TODO: doesn't work (limine's is fine?)
+	// gdt_init();
 	memory_init();
 	fb_init();
 
 	effektMain();
-	hcf();
+	fb_print("Effekt returned?!");
+	while(1);
 }

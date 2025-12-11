@@ -1,5 +1,7 @@
 ; forward-declared from primitives.c
 
+declare %Pos @hcf()
+
 declare i64 @c_get_argc()
 declare %Pos @c_get_arg(i64)
 

@@ -1,109 +1,89 @@
-%macro isr_err_stub 1
-isr_stub_%+%1:
-    push %1
-    call int_common
-    iretq
-%endmacro
+global int_table
+int_table:
+%assign i 0
+%rep 32
+	dq except%+i
+	%assign i i+1
+%endrep
+%rep 224
+	dq irq%+i
+	%assign i i+1
+%endrep
 
-%macro isr_no_err_stub 1
-isr_stub_%+%1:
-    push 0
-    push %1
-    call int_common
-    iretq
-%endmacro
-
-extern interrupt_handler
-
-int_common:
-	cld
+%macro pushaq 0
 	push rax
+	push rbx
 	push rcx
 	push rdx
-	push rdi
 	push rsi
-	push r8
-	push r9
+	push rdi
+	push rbp
+	push r8 
+	push r9 
 	push r10
 	push r11
-	push rbp
-	push rbx
 	push r12
 	push r13
 	push r14
 	push r15
-	
-	push rbp
-	mov rbp, gs
-	push rbp
-	mov rbp, fs
-	push rbp
-	
-	mov rdi, rsp
-	call interrupt_handler
-	
-	pop rbp
-	mov fs, rbp
-	pop rbp
-	mov gs, rbp
-	pop rbp
-	
+%endmacro
+
+%macro popaq 0
 	pop r15
 	pop r14
 	pop r13
 	pop r12
-	pop rbx
-	pop rbp
 	pop r11
 	pop r10
-	pop r9
-	pop r8
-	pop rsi
+	pop r9 
+	pop r8 
+	pop rbp
 	pop rdi
+	pop rsi
 	pop rdx
 	pop rcx
+	pop rbx
 	pop rax
-	
-	add rsp, 8
-	iretq
+%endmacro
 
-isr_no_err_stub 0
-isr_no_err_stub 1
-isr_no_err_stub 2
-isr_no_err_stub 3
-isr_no_err_stub 4
-isr_no_err_stub 5
-isr_no_err_stub 6
-isr_no_err_stub 7
-isr_err_stub    8
-isr_no_err_stub 9
-isr_err_stub    10
-isr_err_stub    11
-isr_err_stub    12
-isr_err_stub    13
-isr_err_stub    14
-isr_no_err_stub 15
-isr_no_err_stub 16
-isr_err_stub    17
-isr_no_err_stub 18
-isr_no_err_stub 19
-isr_no_err_stub 20
-isr_no_err_stub 21
-isr_no_err_stub 22
-isr_no_err_stub 23
-isr_no_err_stub 24
-isr_no_err_stub 25
-isr_no_err_stub 26
-isr_no_err_stub 27
-isr_no_err_stub 28
-isr_no_err_stub 29
-isr_err_stub    30
-isr_no_err_stub 31
-
-global isr_stub_table
-isr_stub_table:
-%assign i 0
-%rep    32
-    dq isr_stub_%+i
+%assign i 32
+%rep 224
+irq%+i:
+	push 0
+    push i
+	jmp irq_common
 %assign i i+1
 %endrep
+
+extern irq_handler
+irq_common:
+	pushaq 
+	mov rdi, rsp
+	call irq_handler
+	popaq 
+	add rsp, 16
+	iretq
+
+%assign i 0
+%rep 32
+%if (i < 10) || ((i > 14) && (i < 17)) || ((i > 17) && (i < 21))
+except%+i:
+    push 0
+    push i
+	jmp except_common
+%else
+except%+i:
+    push i
+	jmp except_common
+%endif
+%assign i i+1
+%endrep
+
+extern except_handler
+except_common:
+	pushaq 
+	mov rdi, rsp
+	call except_handler
+	popaq 
+	add rsp, 16
+	iretq

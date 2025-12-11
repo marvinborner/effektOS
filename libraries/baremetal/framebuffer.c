@@ -21,6 +21,12 @@ void fb_putchar(char ch)
 	}
 }
 
+void fb_print(char *s)
+{
+	for (char *p = s; *p; p++)
+		fb_putchar(*p);
+}
+
 void c_fb_println(String text)
 {
 	for (uint64_t j = 0; j < text.tag; ++j) {
