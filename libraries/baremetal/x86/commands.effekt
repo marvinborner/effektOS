@@ -1,4 +1,4 @@
-extern def hcf() at io: Unit =
+extern def hcf() at io: Nothing =
   llvm """
     call void @hcf()
     ret %Pos zeroinitializer

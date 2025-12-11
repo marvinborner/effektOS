@@ -15,10 +15,10 @@ extern def printFramebuffer(value: String): Unit =
 
 def println(value: String): Unit = {
   value.printFramebuffer()
-  list::collect[Char] { value.each }.foreach { ch =>
-    ch.putChar()
-  } // serial for debugging
-  '\n'.putChar()
+  // list::collect[Char] { value.each }.foreach { ch =>
+  //   ch.putChar()
+  // } // serial for debugging
+  // '\n'.putChar()
 }
 
 def println(value: Int): Unit = println(value.show)

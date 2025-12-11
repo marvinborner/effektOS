@@ -73,14 +73,49 @@ void irq_handler(struct int_frame *);
 void irq_handler(struct int_frame *frame)
 {
 	run_Int(effekt_interrupt_handler, frame->int_no);
-	fb_print("run done");
+}
+
+void e9_printdec(size_t num) {
+    int i;
+    char buf[21] = {0};
+
+    if (!num) {
+        fb_print("0");
+        return;
+    }
+
+    for (i = 19; num; i--) {
+        buf[i] = (num % 10) + 0x30;
+        num = num / 10;
+    }
+
+    i++;
+    fb_print(buf + i);
 }
 
 void except_handler(struct int_frame *);
 void except_handler(struct int_frame *frame)
 {
+	if (frame->int_no < 32) {
+		fb_print("FAULT: ");
+		e9_printdec(frame->int_no);
+		fb_print("\nErr: ");
+		e9_printdec(frame->err_code);
+		fb_print("\nRIP: ");
+		e9_printdec(frame->rip);
+		fb_print("\n");
+
+		if (frame->int_no == 14) {
+			fb_print("Vaddr: ");
+			uint64_t vaddr;
+			__asm__ volatile("movq %%cr2, %0" : "=r"(vaddr) : : "memory");
+			e9_printdec(vaddr);
+			fb_print("\n");
+			fb_print("PAGE FAULT!");
+		}
+		hcf();
+	}
 	run_Int(effekt_interrupt_handler, frame->int_no);
-	fb_print("run done");
 }
 
 #endif

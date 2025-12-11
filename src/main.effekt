@@ -9,29 +9,29 @@ import framebuffer
 
 def header() = {
   val logo = """
-  _____     ______  __  __     _    _
- (_____)   |  ____|/ _|/ _|   | |  | |
-   ___     | |__  | |_| |_ ___| | _| |_
-  (___)    |  __| |  _|  _/ _ \ |/ / __|
-  _____    | |____| | | ||  __/   <| |_
- (_____)   |______|_| |_| \___|_|\_\\__|
+  _____     ______  __  __     _    _    ____   _____ 
+ (_____)   |  ____|/ _|/ _|   | |  | |  / __ \ / ____|
+   ___     | |__  | |_| |_ ___| | _| |_| |  | | (___  
+  (___)    |  __| |  _|  _/ _ \ |/ / __| |  | |\___ \ 
+  _____    | |____| | | ||  __/   <| |_| |__| |____) |
+ (_____)   |______|_| |_| \___|_|\_\\__|\____/|_____/ 
 """
   println(logo)
 }
 
-def requestDispatch { prog: => Unit / Request }: Unit / { Exception[PS2Keyboard], Exception[TimerTick], Exception[RuntimeError] } = {
+def dispatch { prog: => Unit / Request }: Unit / { Exception[PS2Keyboard], Exception[TimerTick], Exception[RuntimeError] } = {
   try prog()
   with Request {
     def trap(n: Int) = {
-      println("it's a trap! ${n.show}")
+      resume(println("it's a trap! ${n.show}"))
     }
     def event(n: Int) = n match {
-      case 0 => do raise(TimerTick(), "timer ticked")
-      case _ => println("unknown event: ${n.show}")
+      case 0 => resume(do raise(TimerTick(), "timer ticked"))
+      case _ => resume(println("unknown event: ${n.show}"))
     }
     def special(n: Int) = n match {
       case _ => {
-        println("unknown special request: ${n.show}")
+        resume(println("unknown special request: ${n.show}"))
       }
     }
   }
@@ -41,16 +41,17 @@ def ps2Handler() = ()
 
 def main() = {
   with on[RuntimeError].panic
-  with on[TimerTick].report
+  with on[TimerTick].ignore
   with on[PS2Keyboard].default { ps2Handler }
-  with requestDispatch
+  with dispatch
 
   serial::init()
   header()
 
   pic::init()
   val inbox = interrupts::init()
-  // pit::init(1000)
+  pit::init(1000)
   interrupts::idle(inbox) 
-  hcf()
+
+  hcf() // should never run
 }

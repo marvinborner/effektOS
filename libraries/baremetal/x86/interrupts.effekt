@@ -47,7 +47,7 @@ def init(): Ref[List[Int]] = {
 }
 
 // inspired by the react-ish framework by @jiribenes
-def idle(inbox: Ref[List[Int]]) at {io, global}: Unit / Request = {
+def idle(inbox: Ref[List[Int]]) at {io, global}: Nothing / Request = {
   halt() // until interrupt
 
   val interrupts = inbox.get.reverse

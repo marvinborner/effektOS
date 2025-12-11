@@ -57,12 +57,22 @@ int memcmp(const void *s1, const void *s2, size_t n)
 	return 0;
 }
 
+// --- allocation ---
+
 static void *kheap = 0;
-void memory_init()
+static heap_t *uheap = 0;
+
+void *kmalloc(size_t size)
 {
-	if (memmap_request.response == NULL) {
+	void *ptr = kheap;
+	kheap = (uint8_t *)kheap + size;
+	return ptr;
+}
+
+void memory_init(void)
+{
+	if (memmap_request.response == NULL)
 		hcf();
-	}
 
 	size_t largest_memory_size = 0;
 	void *largest_memory_area = 0;
@@ -79,23 +89,39 @@ void memory_init()
 	}
 
 	kheap = largest_memory_area;
+	uheap = kmalloc(sizeof(*uheap));
+	memset(uheap, 0, sizeof(*uheap));
+
+	void *region = kmalloc(HEAP_INIT_SIZE);
+	memset(region, 0, HEAP_INIT_SIZE);
+
+	for (int i = 0; i < BIN_COUNT; i++) {
+		uheap->bins[i] = kmalloc(sizeof(bin_t));
+		memset(uheap->bins[i], 0, sizeof(bin_t));
+	}
+
+	heap_init(uheap, (long)region);
 }
 
 void *malloc(size_t size)
 {
-	void *ptr = kheap;
-	kheap = (uint8_t *)kheap + size;
-	return ptr;
+	return heap_alloc(uheap, size);
 }
 
-void *realloc(void *ptr, size_t size)
+void *realloc(void *p, size_t size)
 {
-	void *new = malloc(size);
-	memcpy(new, ptr, size); // might leak but idc
-	return new;
+	return heap_realloc(uheap, p, size);
+}
+
+void *calloc(size_t n, size_t size)
+{
+	// TODO: handle integer overflow (return 0)
+	void *p = heap_alloc(uheap, n * size);
+	memset(p, 0, n * size);
+	return p;
 }
 
 void free(void *ptr)
 {
-	return;
+	heap_free(uheap, ptr);
 }

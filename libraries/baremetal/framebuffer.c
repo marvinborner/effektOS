@@ -1,7 +1,7 @@
 #ifndef EFFEKT_FB_C
 #define EFFEKT_FB_C
 
-void fb_init()
+void fb_init(void)
 {
 	struct limine_framebuffer *fb =
 		framebuffer_request.response->framebuffers[0];

@@ -3,7 +3,7 @@
 #define REQUEST __attribute__((section(".limine_requests")))
 #define PACKED __attribute__((packed))
 
-__attribute__((cold)) void hcf(void)
+__attribute__((noreturn)) void hcf(void)
 {
 	__asm__ volatile("cli");
 	for (;;) {
@@ -27,6 +27,7 @@ REQUEST static volatile struct limine_memmap_request memmap_request = {
 	.response = 0
 };
 
+#include "../baremetal/heap.c"
 #include "../baremetal/memory.c"
 #include "../flanterm/src/flanterm.c"
 #include "../flanterm/src/flanterm_backends/fb.c"
@@ -36,10 +37,9 @@ REQUEST static volatile struct limine_memmap_request memmap_request = {
 #include "../baremetal/framebuffer.c"
 #include "panic.c"
 
-#include "../baremetal/x86/gdt.c"
 #include "../baremetal/x86/interrupts.c"
 
-extern void effektMain();
+extern void effektMain(void);
 
 void kmain(void);
 void kmain(void)
@@ -50,5 +50,6 @@ void kmain(void)
 
 	effektMain();
 	fb_print("Effekt returned?!");
-	while(1);
+	while(1)
+		__asm__ volatile("hlt");
 }

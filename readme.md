@@ -1,3 +1,0 @@
-# EffektOS
-
-> WIP, more soon!
