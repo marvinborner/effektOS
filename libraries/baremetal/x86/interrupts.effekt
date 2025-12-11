@@ -18,20 +18,19 @@ extern llvm """
 
 extern def installHandler(callback: Int => Unit at {io, global}) at {io}: Unit =
   llvm """
-    call ccc void @c_idt_install_handler(%Pos ${callback})
+    call void @c_idt_install_handler(%Pos ${callback})
     ret %Pos zeroinitializer
   """
 
 extern def initIDT() at {io}: Unit =
   llvm """
-    call ccc void @c_idt_init()
+    call void @c_idt_init()
     ret %Pos zeroinitializer
   """
 
 def newHandler(inbox: Ref[List[Int]]): Int => Unit at {io, global} = {
   val handler: Int => Unit at {io, global} = box { i =>
     installHandler(inbox.newHandler())
-    if (i < 32) println("fault: ${i.show}") // probably non-recoverable!
     inbox.set(Cons(i, inbox.get))
     pic::ack(i)
   }

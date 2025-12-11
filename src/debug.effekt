@@ -1,0 +1,4 @@
+interface Debug {
+  def print(value: String): Unit
+  def println(value: String): Unit
+}

@@ -7,8 +7,9 @@ import framebuffer
 import interrupt
 
 import ps2/keyboard
+import debug
 
-def header() = {
+def header(): Unit / Debug = {
   val logo = """
   _____     ______  __  __     _    _    ____   _____ 
  (_____)   |  ____|/ _|/ _|   | |  | |  / __ \ / ____|
@@ -17,33 +18,37 @@ def header() = {
   _____    | |____| | | ||  __/   <| |_| |__| |____) |
  (_____)   |______|_| |_| \___|_|\_\\__|\____/|_____/ 
 """
-  println(logo)
+  do println(logo)
 }
 
-def dispatch { prog: => Nothing / Request }: Nothing / { Interrupt[PS2Keyboard], Interrupt[TimerTick] } = {
+def dispatch { prog: => Nothing / Request }: Nothing / { Interrupt[PS2Keyboard], Interrupt[TimerTick], Debug } = {
   try prog()
   with Request {
     def trap(n: Int) = {
-      resume(println("it's a trap! ${n.show}"))
+      resume(do println("it's a trap! ${n.show}"))
     }
     def event(n: Int) = n match {
       case 0 => resume(do interrupt(TimerTick()))
       case 1 => resume(do interrupt(PS2Keyboard()))
-      case _ => resume(println("unknown event: ${n.show}"))
+      case _ => resume(do println("unknown event: ${n.show}"))
     }
     def special(n: Int) = n match {
       case _ => {
-        println("unknown special ${n.show}")
+        do println("unknown special ${n.show}")
         resume(())
       }
     }
   }
 }
 
-def os { init: => Nothing / emit[Char] }: Nothing = {
+def os { init: => Nothing / { emit[Char], Debug } }: Nothing = {
   try init()
   with emit[Char] { ch =>
-    resume(print(ch.show))
+    resume(framebuffer::print(ch.show))
+  }
+  with Debug {
+    def print(value) = resume(framebuffer::print(value))
+    def println(value) = resume(framebuffer::print("${value}\n"))
   }
 }
 

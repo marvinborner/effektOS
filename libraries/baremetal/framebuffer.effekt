@@ -2,26 +2,8 @@ extern llvm """
   declare %Pos @c_fb_print(%Pos)
 """
 
-extern def printFramebuffer(value: String): Unit =
-  js "$effekt.println(${value})"
-  chez "(println_impl ${value})"
+extern def print(value: String): Unit =
   llvm """
     call void @c_fb_print(%Pos ${value})
     ret %Pos zeroinitializer ; Unit
   """
-  vm "effekt::println(String)"
-
-def println(value: String): Unit = {
-  value.printFramebuffer()
-  "\n".printFramebuffer()
-}
-
-def print(value: String): Unit = {
-  value.printFramebuffer()
-}
-
-def println(value: Int): Unit = println(value.show)
-def println(value: Unit): Unit = println(value.show)
-def println(value: Double): Unit = println(value.show)
-def println(value: Bool): Unit = println(value.show)
-def println(value: Byte): Unit = println(value.show)
