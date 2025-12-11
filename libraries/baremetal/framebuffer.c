@@ -27,13 +27,12 @@ void fb_print(char *s)
 		fb_putchar(*p);
 }
 
-void c_fb_println(String text)
+void c_fb_print(String text)
 {
 	for (uint64_t j = 0; j < text.tag; ++j) {
 		fb_putchar(c_bytearray_data(text)[j]);
 	};
 	erasePositive(text);
-	fb_putchar('\n');
 }
 
 #endif

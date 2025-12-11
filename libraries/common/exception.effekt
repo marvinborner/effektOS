@@ -54,14 +54,14 @@ extern def panic(msg: String) at io: Nothing =
   js "(function() { throw ${msg} })()"
   chez "(raise ${msg})"
   llvm """
-    call void @c_fb_println(%Pos ${msg})
+    call void @c_fb_print(%Pos ${msg})
     call void @hcf()
     ret %Pos zeroinitializer ; Unit
   """
 
 extern def report(msg: String) at io: Nothing =
   llvm """
-    call void @c_fb_println(%Pos ${msg})
+    call void @c_fb_print(%Pos ${msg})
     ret %Pos zeroinitializer ; Unit
   """
 

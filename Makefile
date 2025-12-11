@@ -1,6 +1,6 @@
 QEMU=qemu-system-x86_64
 LIBRARY := libraries/common/
-EFFEKTFLAGS := --build --backend llvm --no-optimize --baremetal -l $(LIBRARY) --clang-includes limine.h --includes libraries/baremetal/
+EFFEKTFLAGS := --build --backend llvm --optimize --baremetal -l $(LIBRARY) --clang-includes limine.h --includes src/ libraries/baremetal/
 
 all: image.hdd
 

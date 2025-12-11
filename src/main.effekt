@@ -6,7 +6,7 @@ import x86/interrupts
 import framebuffer
 import interrupt
 
-// import src/ps2/keyboard
+import ps2/keyboard
 
 def header() = {
   val logo = """
@@ -33,22 +33,17 @@ def dispatch { prog: => Nothing / Request }: Nothing / { Interrupt[PS2Keyboard],
     }
     def special(n: Int) = n match {
       case _ => {
-        // resume(do interrupt(RuntimeError()))
-        <>
+        println("unknown special ${n.show}")
+        resume(())
       }
     }
   }
 }
 
-def keyboardHandler(): Unit / emit[Char] = {
-  val byte = inb(96)
-  <>
-}
-
-def os { init: => Nothing / { emit[Char] }}: Nothing = {
+def os { init: => Nothing / emit[Char] }: Nothing = {
   try init()
   with emit[Char] { ch =>
-    println(ch)
+    resume(print(ch.show))
   }
 }
 

@@ -49,15 +49,13 @@ extern void *int_table[];
 
 static struct Pos effekt_interrupt_handler;
 
-void c_idt_install_handler(struct Pos callback) {
+void c_idt_install_handler(const struct Pos callback) {
 	effekt_interrupt_handler = callback;
 }
 
-void c_idt_init(struct Pos);
-void c_idt_init(struct Pos callback)
+void c_idt_init(void);
+void c_idt_init(void)
 {
-	c_idt_install_handler(callback);
-
 	idt_ptr.base = &idt;
 	idt_ptr.size = (uint16_t)sizeof(idt) - 1;
 
@@ -72,10 +70,11 @@ void c_idt_init(struct Pos callback)
 void irq_handler(struct int_frame *);
 void irq_handler(struct int_frame *frame)
 {
-	run_Int(effekt_interrupt_handler, frame->int_no);
+	if (effekt_interrupt_handler.obj)
+		run_Int(effekt_interrupt_handler, frame->int_no);
 }
 
-void e9_printdec(size_t num) {
+void printdec(size_t num) {
     int i;
     char buf[21] = {0};
 
@@ -96,20 +95,21 @@ void e9_printdec(size_t num) {
 void except_handler(struct int_frame *);
 void except_handler(struct int_frame *frame)
 {
+	// temporary: somehow do this in Effekt TODO
 	if (frame->int_no < 32) {
 		fb_print("FAULT: ");
-		e9_printdec(frame->int_no);
+		printdec(frame->int_no);
 		fb_print("\nErr: ");
-		e9_printdec(frame->err_code);
+		printdec(frame->err_code);
 		fb_print("\nRIP: ");
-		e9_printdec(frame->rip);
+		printdec(frame->rip);
 		fb_print("\n");
 
 		if (frame->int_no == 14) {
 			fb_print("Vaddr: ");
 			uint64_t vaddr;
 			__asm__ volatile("movq %%cr2, %0" : "=r"(vaddr) : : "memory");
-			e9_printdec(vaddr);
+			printdec(vaddr);
 			fb_print("\n");
 			fb_print("PAGE FAULT!");
 		}

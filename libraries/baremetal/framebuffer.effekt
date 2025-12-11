@@ -1,24 +1,23 @@
-import x86/serial
-
 extern llvm """
-  declare %Pos @c_fb_println(%Pos)
+  declare %Pos @c_fb_print(%Pos)
 """
 
 extern def printFramebuffer(value: String): Unit =
   js "$effekt.println(${value})"
   chez "(println_impl ${value})"
   llvm """
-    call void @c_fb_println(%Pos ${value})
+    call void @c_fb_print(%Pos ${value})
     ret %Pos zeroinitializer ; Unit
   """
   vm "effekt::println(String)"
 
 def println(value: String): Unit = {
   value.printFramebuffer()
-  // list::collect[Char] { value.each }.foreach { ch =>
-  //   ch.putChar()
-  // } // serial for debugging
-  // '\n'.putChar()
+  "\n".printFramebuffer()
+}
+
+def print(value: String): Unit = {
+  value.printFramebuffer()
 }
 
 def println(value: Int): Unit = println(value.show)

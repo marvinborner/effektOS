@@ -19,5 +19,12 @@ extern def outb(port: Int, data: Byte) at io: Unit =
     ret %Pos zeroinitializer
   """
 
+extern def inb(port: Int) at io: Byte =
+  llvm """
+    %port16 = trunc i64 ${port} to i16
+    %1 = call i8 asm sideeffect "inb $1, $0", "={al},{dx},~{dirflag},~{fpsr},~{flags}"(i16 %port16)
+    ret i8 %1
+  """
+
 def outb(port: Int, data: Int) =
   outb(port, data.toByte)

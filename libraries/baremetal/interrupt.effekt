@@ -2,7 +2,7 @@ interface Interrupt[I] {
   def interrupt(interrupt: I): Unit
 }
 
-def handle[I] { handle: => Unit } { prog: => Nothing / Interrupt[I] }: Nothing =
+def handle[I, E] { handle: => Unit / emit[E] } { prog: => Nothing / Interrupt[I] }: Nothing / emit[E] =
   try { prog() } with Interrupt[I] { def interrupt(interrupt: I) = resume(handle()) }
 
 def ignore[I] { prog: => Nothing / Interrupt[I] }: Nothing =
@@ -16,8 +16,8 @@ def panicOn[I, T] { prog: => T / Interrupt[I] }: T =
 
 record on[I]()
 
-def handle[I](proxy: on[I]) { d: => Unit } { prog: => Nothing / Interrupt[I] }: Nothing =
-  handle[I] {d} {prog}
+def handle[I, E](proxy: on[I]) { d: => Unit / emit[E] } { prog: => Nothing / Interrupt[I] }: Nothing / emit[E] =
+  handle[I, E] {d} {prog}
 
 def ignore[I](proxy: on[I]) { prog: => Nothing / Interrupt[I] }: Nothing =
   ignore[I] {prog}
