@@ -27,6 +27,13 @@ REQUEST static volatile struct limine_memmap_request memmap_request = {
 	.response = 0
 };
 
+REQUEST static volatile struct limine_stack_size_request stack_size_request = {
+	.id = LIMINE_STACK_SIZE_REQUEST_ID,
+	.revision = 0,
+	.response = 0,
+	.stack_size = 0x8000000 // 128MB
+};
+
 #include "../baremetal/heap.c"
 #include "../baremetal/memory.c"
 #include "../flanterm/src/flanterm.c"
