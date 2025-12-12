@@ -10,3 +10,8 @@ def nothing { prog: => Unit }: Nothing = {
   prog()
   <>
 }
+
+def emit[A] { f: A => Unit } { prog: => Unit / emit[A] }: Unit = {
+  try prog()
+  with emit[A] { v => resume(f(v)) }
+}

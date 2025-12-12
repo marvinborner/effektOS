@@ -10,22 +10,18 @@ type Expr {
   Mul(left: Expr, right: Expr)
 }
 
-def program(): Nothing / Scan[Char] = {
-  framebuffer::print("Welcome to the Effekt Kalkulator! Please give me your equations :)\n")
+def program(): Nothing / { read[Char], emit[Char] } = {
+  "Welcome to the Effekt Kalkulator! Please give me your expressions :)\n".each
 
   with nothing
+  with scanning[Char]
   with exhaustively
 
   val a = readDecimal()
-  framebuffer::print("${a.show}")
   skipWhitespace()
   val op = read()
-  framebuffer::print(" + ") // op.show
   skipWhitespace()
   val b = readDecimal()
-  framebuffer::print("${b.show}")
-  framebuffer::print(" = ${(a + b).show}\n")
+  " = ${(a - b).show}\n".each
   skipWhitespace()
-
-  ()
 }

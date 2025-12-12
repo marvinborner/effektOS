@@ -17,6 +17,10 @@ def read[A](): A / { Scan[A], stop } = {
   return t
 }
 
+/// Run a scanner by reading from an input stream, reflecting its output.
+def scanning[A] { scanner: () => Unit / Scan[A] }: Unit / { read[A], emit[A] } =
+  returning::scanning[A, Unit]{scanner}
+
 /// Run a scanner by reading from an input stream, discarding its output.
 def scanner[A] { scanner: () => Unit / Scan[A] }: Unit / read[A] =
   returning::scanner[A, Unit]{scanner}
@@ -141,6 +145,36 @@ def scanner[A, R] { scanner: () => R / Scan[A] }: R / read[A] = {
       last match {
         case None() =>
           val _ = do read()
+          return ()
+        case Some(t) =>
+          last = None()
+          return ()
+      }
+    }
+  }
+}
+
+def scanning[A, R] { scanner: () => R / Scan[A] }: R / { read[A], emit[A] } = {
+  var last = None()
+  try {
+    scanner()
+  } with Scan[A] {
+    def peek() = resume {
+      last match {
+        case None() =>
+          val t = do read()
+          do emit(t)
+          last = Some(t)
+          return t
+        case Some(t) =>
+          return t
+      }
+    }
+    def skip() = resume {
+      last match {
+        case None() =>
+          val ch = do read()
+          do emit(ch)
           return ()
         case Some(t) =>
           last = None()
