@@ -1,0 +1,12 @@
+def looping { prog: => Unit }: Nothing = {
+  def go(): Nothing = {
+    prog()
+    go()
+  }
+  go()
+}
+
+def nothing { prog: => Unit }: Nothing = {
+  prog()
+  <>
+}

@@ -7,7 +7,11 @@ import framebuffer
 import interrupt
 
 import ps2/keyboard
+import calculator
 import debug
+import utils
+
+import scanner
 
 def header(): Unit / Debug = {
   val logo = """
@@ -42,14 +46,17 @@ def dispatch { prog: => Nothing / Request }: Nothing / { Interrupt[PS2Keyboard],
 }
 
 def os { init: => Nothing / { emit[Char], Debug } }: Nothing = {
-  try init()
-  with emit[Char] { ch =>
-    resume(framebuffer::print(ch.show))
+  with nothing
+  with source[Char] {
+    try init()
+    with Debug {
+      def print(value) = resume(framebuffer::print(value))
+      def println(value) = resume(framebuffer::print("${value}\n"))
+    }
   }
-  with Debug {
-    def print(value) = resume(framebuffer::print(value))
-    def println(value) = resume(framebuffer::print("${value}\n"))
-  }
+  with scanner[Char]
+
+  calculator::program()
 }
 
 def main(): Nothing = {

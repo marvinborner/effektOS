@@ -1,0 +1,31 @@
+import utils
+import framebuffer
+
+import scanner
+
+type Expr {
+  Num(value: Int);
+  Add(left: Expr, right: Expr);
+  Sub(left: Expr, right: Expr);
+  Mul(left: Expr, right: Expr)
+}
+
+def program(): Nothing / Scan[Char] = {
+  framebuffer::print("Welcome to the Effekt Kalkulator! Please give me your equations :)\n")
+
+  with nothing
+  with exhaustively
+
+  val a = readDecimal()
+  framebuffer::print("${a.show}")
+  skipWhitespace()
+  val op = read()
+  framebuffer::print(" + ") // op.show
+  skipWhitespace()
+  val b = readDecimal()
+  framebuffer::print("${b.show}")
+  framebuffer::print(" = ${(a + b).show}\n")
+  skipWhitespace()
+
+  ()
+}

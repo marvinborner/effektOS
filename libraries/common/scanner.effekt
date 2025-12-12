@@ -154,26 +154,3 @@ def expect[R](message: String) { scanner: () => R / stop }: R / Exception[WrongF
   attempt { scanner() } { wrongFormat(message) }
 
 }
-
-
-namespace test {
-  def main(): Unit = {
-  
-    val input =
-      """
-      12
-      -13
-      A1B2
-      """
-
-    with feed(input)
-    with scanner[Char]
-
-    skipWhitespace()
-    println(readInteger().show)
-    skipWhitespace()
-    println(readInteger().show)
-    skipWhitespace()
-    println(readHexadecimal().show)
-  }
-}
