@@ -15,3 +15,10 @@ def emit[A] { f: A => Unit } { prog: => Unit / emit[A] }: Unit = {
   try prog()
   with emit[A] { v => resume(f(v)) }
 }
+
+def interruptible { prog: => Unit / emit[Char] }: Unit / { emit[Char], stop } = {
+  for[Char] { prog } { ch =>
+    if (ch == '\u1b') do stop()
+    else do emit(ch)
+  }
+}

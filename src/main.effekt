@@ -45,16 +45,8 @@ def dispatch { prog: => Nothing / Request }: Nothing / { Interrupt[PS2Keyboard],
   }
 }
 
-def debug { prog: => Nothing / Debug }: Nothing = {
-  try prog()
-  with Debug {
-    def print(value) = resume(framebuffer::print(value))
-    def println(value) = resume(framebuffer::print("${value}\n"))
-  }
-}
-
 def os { init: => Nothing / emit[Char] }: Nothing = {
-  with nothing
+  with looping
   with source[Char] { init }
   with emit[Char] { ch => framebuffer::print(ch.show) }
 
