@@ -1,20 +1,3 @@
-extern llvm """
-  declare void @hcf()
-  declare void @segfault()
-"""
-
-extern def hcf() at io: Nothing =
-  llvm """
-    call void @hcf()
-    ret %Pos zeroinitializer
-  """
-
-extern def segfault() at io: Unit =
-  llvm """
-    call void @segfault()
-    ret %Pos zeroinitializer
-  """
-
 extern def halt() at io: Unit =
   llvm """
     call void asm sideeffect "hlt", "~{memory},~{dirflag},~{fpsr},~{flags}"()

@@ -1,5 +1,69 @@
+import debug
+import panic
+
+// ISA IRQs
+record TimerTick()
+record PS2Keyboard()
+record Cascade()
+record COM2()
+record COM1()
+record LPT2()
+record FloppyDisk()
+record LPT1()
+record CMOS()
+record Peripheral1()
+record Peripheral2()
+record Peripheral3()
+record PS2Mouse()
+record FPU()
+record PrimaryATA()
+record SecondaryATA()
+
+interface Request {
+  def trap(n: Int): Unit
+  def event(n: Int): Unit
+  def special(n: Int): Unit
+}
+
 interface Interrupt[I] {
   def interrupt(interrupt: I): Unit
+}
+
+def dispatch { prog: => Nothing / Request }: Nothing / {
+  Interrupt[TimerTick], Interrupt[PS2Keyboard], Interrupt[Cascade], Interrupt[COM2], Interrupt[COM1],
+  Interrupt[LPT2], Interrupt[FloppyDisk], Interrupt[LPT1], Interrupt[CMOS], Interrupt[Peripheral1],
+  Interrupt[Peripheral2], Interrupt[Peripheral3], Interrupt[PS2Mouse], Interrupt[FPU], Interrupt[PrimaryATA],
+  Interrupt[SecondaryATA], Debug
+} = {
+  try prog()
+  with Request {
+    def trap(n: Int) = {
+      do println("IT'S A TRAP: this should have been handled!")
+      hcf()
+    }
+    def event(n: Int) = resume(n match {
+      case 0  => do interrupt(TimerTick())
+      case 1  => do interrupt(PS2Keyboard())
+      case 2  => do interrupt(Cascade())
+      case 3  => do interrupt(COM2())
+      case 4  => do interrupt(COM1())
+      case 5  => do interrupt(LPT2())
+      case 6  => do interrupt(FloppyDisk())
+      case 7  => do interrupt(LPT1())
+      case 8  => do interrupt(CMOS())
+      case 9  => do interrupt(Peripheral1())
+      case 10 => do interrupt(Peripheral2())
+      case 11 => do interrupt(Peripheral3())
+      case 12 => do interrupt(PS2Mouse())
+      case 13 => do interrupt(FPU())
+      case 14 => do interrupt(PrimaryATA())
+      case 15 => do interrupt(SecondaryATA())
+      case _  => do println("unknown event: ${n.show}")
+    })
+    def special(n: Int) = n match {
+      case _ => resume(do println("unknown special ${n.show}"))
+    }
+  }
 }
 
 def handle[I, E] { handle: => Unit / emit[E] } { prog: => Nothing / Interrupt[I] }: Nothing / emit[E] =
