@@ -1,36 +1,43 @@
 #ifndef EFFEKT_TYPES_C
 #define EFFEKT_TYPES_C
 
-
 typedef int64_t Int;
 typedef double Double;
 typedef uint8_t Byte;
 
 struct Header {
-    uint64_t rc;
-    void (*eraser)(void *);
+	uint64_t rc;
+	void (*eraser)(void *);
 };
 
 struct Pos {
-    uint64_t tag; // type-local tag
-    void *obj; // pointer into the heap
+	uint64_t tag; // type-local tag
+	void *obj; // pointer into the heap
 };
 
 struct Neg {
-    void *vtable;
-    void *obj;
+	void *vtable;
+	void *obj;
 };
 
-static const struct Pos Unit = (struct Pos) { .tag = 0, .obj = NULL, };
-static const struct Pos BooleanFalse = (struct Pos) { .tag = 0, .obj = NULL, };
-static const struct Pos BooleanTrue = (struct Pos) { .tag = 1, .obj = NULL, };
+static const struct Pos Unit = (struct Pos){
+	.tag = 0,
+	.obj = NULL,
+};
+static const struct Pos BooleanFalse = (struct Pos){
+	.tag = 0,
+	.obj = NULL,
+};
+static const struct Pos BooleanTrue = (struct Pos){
+	.tag = 1,
+	.obj = NULL,
+};
 
 typedef struct Pos String;
 
 struct StackValue;
 
-typedef struct StackValue* Stack;
-
+typedef struct StackValue *Stack;
 
 // Defined in rts.ll
 

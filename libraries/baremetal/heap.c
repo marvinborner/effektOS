@@ -10,8 +10,8 @@ __attribute__((noreturn)) void hole(const char *message);
 #define ALIGN_BTYES sizeof(long)
 
 #define HEAP_INIT_SIZE 0x1000000
-#define HEAP_MAX_SIZE  0xF000000
-#define HEAP_MIN_SIZE  0x1000000
+#define HEAP_MAX_SIZE 0xF000000
+#define HEAP_MIN_SIZE 0x1000000
 
 #define MIN_ALLOC_SZ 4
 

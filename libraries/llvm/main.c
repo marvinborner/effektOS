@@ -5,7 +5,7 @@
 
 __attribute__((noreturn)) void hcf(void)
 {
-	__asm__ volatile("sti");
+	__asm__ volatile("cli");
 	for (;;) {
 		__asm__ volatile("hlt");
 	}
@@ -15,7 +15,7 @@ __attribute__((noreturn)) void hcf(void)
 void segfault(void)
 {
 	volatile int *p = (int *)0;
-    *p = 42;
+	*p = 42;
 }
 
 static struct flanterm_context *ft_ctx = 0;
@@ -64,6 +64,6 @@ void kmain(void)
 
 	effektMain();
 	fb_print("Effekt returned?!");
-	while(1)
+	while (1)
 		__asm__ volatile("hlt");
 }
