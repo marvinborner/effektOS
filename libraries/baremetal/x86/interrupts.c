@@ -47,10 +47,15 @@ void idt_set_descriptor(uint8_t vector, void *isr, uint8_t flags)
 
 extern void *int_table[];
 
-static struct Pos effekt_interrupt_handler;
+static struct Pos effekt_interrupt_handler = { 0 };
+static struct Pos effekt_exception_handler = { 0 };
 
-void c_idt_install_handler(const struct Pos callback) {
+void c_install_interrupt_handler(const struct Pos callback) {
 	effekt_interrupt_handler = callback;
+}
+
+void c_install_exception_handler(const struct Pos callback) {
+	effekt_exception_handler = callback;
 }
 
 void c_idt_init(void);
@@ -67,55 +72,18 @@ void c_idt_init(void)
 	__asm__ volatile("sti");
 }
 
-void irq_handler(struct int_frame *);
-void irq_handler(struct int_frame *frame)
+void interrupt_handler(struct int_frame *);
+void interrupt_handler(struct int_frame *frame)
 {
-	if (effekt_interrupt_handler.obj)
-		run_Int(effekt_interrupt_handler, frame->int_no);
-}
-
-void printdec(size_t num) {
-    int i;
-    char buf[21] = {0};
-
-    if (!num) {
-        fb_print("0");
-        return;
-    }
-
-    for (i = 19; num; i--) {
-        buf[i] = (num % 10) + 0x30;
-        num = num / 10;
-    }
-
-    i++;
-    fb_print(buf + i);
-}
-
-void except_handler(struct int_frame *);
-void except_handler(struct int_frame *frame)
-{
-	// temporary: somehow do this in Effekt TODO
-	if (frame->int_no < 32) {
-		fb_print("FAULT: ");
-		printdec(frame->int_no);
-		fb_print("\nErr: ");
-		printdec(frame->err_code);
-		fb_print("\nRIP: ");
-		printdec(frame->rip);
-		fb_print("\n");
-
-		if (frame->int_no == 14) {
-			fb_print("Vaddr: ");
-			uint64_t vaddr;
-			__asm__ volatile("movq %%cr2, %0" : "=r"(vaddr) : : "memory");
-			printdec(vaddr);
-			fb_print("\n");
-			fb_print("PAGE FAULT!");
-		}
-		hcf();
-	}
 	run_Int(effekt_interrupt_handler, frame->int_no);
+}
+
+void exception_handler(struct int_frame *);
+void exception_handler(struct int_frame *frame)
+{
+	run_Int(effekt_exception_handler, frame->int_no);
+	fb_print("UNHANDLED FAULT");
+	hcf();
 }
 
 #endif

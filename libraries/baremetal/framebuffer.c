@@ -21,9 +21,9 @@ void fb_putchar(char ch)
 	}
 }
 
-void fb_print(char *s)
+void fb_print(const char *s)
 {
-	for (char *p = s; *p; p++)
+	for (const char *p = s; *p; p++)
 		fb_putchar(*p);
 }
 

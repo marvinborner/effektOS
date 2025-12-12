@@ -1,9 +1,26 @@
+import debug
 import framebuffer
+import interrupt
 import x86/pic
 import x86/commands
 
+// ISA IRQs
 record TimerTick()
 record PS2Keyboard()
+record Cascade()
+record COM2()
+record COM1()
+record LPT2()
+record FloppyDisk()
+record LPT1()
+record CMOS()
+record Peripheral1()
+record Peripheral2()
+record Peripheral3()
+record PS2Mouse()
+record FPU()
+record PrimaryATA()
+record SecondaryATA()
 
 interface Request {
   def trap(n: Int): Unit
@@ -11,14 +28,58 @@ interface Request {
   def special(n: Int): Unit
 }
 
+def dispatch { prog: => Nothing / Request }: Nothing / {
+  Interrupt[TimerTick], Interrupt[PS2Keyboard], Interrupt[Cascade], Interrupt[COM2], Interrupt[COM1],
+  Interrupt[LPT2], Interrupt[FloppyDisk], Interrupt[LPT1], Interrupt[CMOS], Interrupt[Peripheral1],
+  Interrupt[Peripheral2], Interrupt[Peripheral3], Interrupt[PS2Mouse], Interrupt[FPU], Interrupt[PrimaryATA],
+  Interrupt[SecondaryATA], Debug
+} = {
+  try prog()
+  with Request {
+    def trap(n: Int) = {
+      do println("IT'S A TRAP: this should have been handled!")
+      hcf()
+    }
+    def event(n: Int) = resume(n match {
+      case 0  => do interrupt(TimerTick())
+      case 1  => do interrupt(PS2Keyboard())
+      case 2  => do interrupt(Cascade())
+      case 3  => do interrupt(COM2())
+      case 4  => do interrupt(COM1())
+      case 5  => do interrupt(LPT2())
+      case 6  => do interrupt(FloppyDisk())
+      case 7  => do interrupt(LPT1())
+      case 8  => do interrupt(CMOS())
+      case 9  => do interrupt(Peripheral1())
+      case 10 => do interrupt(Peripheral2())
+      case 11 => do interrupt(Peripheral3())
+      case 12 => do interrupt(PS2Mouse())
+      case 13 => do interrupt(FPU())
+      case 14 => do interrupt(PrimaryATA())
+      case 15 => do interrupt(SecondaryATA())
+      case _  => do println("unknown event: ${n.show}")
+    })
+    def special(n: Int) = n match {
+      case _ => resume(do println("unknown special ${n.show}"))
+    }
+  }
+}
+
 extern llvm """
   declare %Pos @c_idt_init()
-  declare %Pos @c_idt_install_handler(%Pos)
+  declare %Pos @c_install_exception_handler(%Pos)
+  declare %Pos @c_install_interrupt_handler(%Pos)
 """
 
-extern def installHandler(callback: Int => Unit at {io, global}) at {io}: Unit =
+extern def installExceptionHandler(callback: Int => Nothing at {io, global}) at {io}: Unit =
   llvm """
-    call void @c_idt_install_handler(%Pos ${callback})
+    call void @c_install_exception_handler(%Pos ${callback})
+    ret %Pos zeroinitializer
+  """
+
+extern def installInterruptHandler(callback: Int => Unit at {io, global}) at {io}: Unit =
+  llvm """
+    call void @c_install_interrupt_handler(%Pos ${callback})
     ret %Pos zeroinitializer
   """
 
@@ -30,18 +91,19 @@ extern def initIDT() at {io}: Unit =
 
 def newHandler(inbox: Ref[List[Int]]): Int => Unit at {io, global} = {
   val handler: Int => Unit at {io, global} = box { i =>
-    installHandler(inbox.newHandler())
+    installInterruptHandler(inbox.newHandler())
     inbox.set(Cons(i, inbox.get))
     pic::ack(i)
   }
   handler
 }
 
-def init(): Ref[List[Int]] = {
+def init(exception: Int => Nothing at {io, global}): Ref[List[Int]] = {
   initIDT()
 
   val inbox = ref[List[Int]](Nil())
-  installHandler(inbox.newHandler)
+  installExceptionHandler(exception)
+  installInterruptHandler(inbox.newHandler)
   inbox
 }
 

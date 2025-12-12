@@ -5,10 +5,17 @@
 
 __attribute__((noreturn)) void hcf(void)
 {
-	__asm__ volatile("cli");
+	__asm__ volatile("sti");
 	for (;;) {
 		__asm__ volatile("hlt");
 	}
+}
+
+// for testing
+void segfault(void)
+{
+	volatile int *p = (int *)0;
+    *p = 42;
 }
 
 static struct flanterm_context *ft_ctx = 0;

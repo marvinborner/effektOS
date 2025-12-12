@@ -25,24 +25,14 @@ def header(): Unit / Debug = {
   do println(logo)
 }
 
-def dispatch { prog: => Nothing / Request }: Nothing / { Interrupt[PS2Keyboard], Interrupt[TimerTick], Debug } = {
-  try prog()
-  with Request {
-    def trap(n: Int) = {
-      resume(do println("it's a trap! ${n.show}"))
-    }
-    def event(n: Int) = n match {
-      case 0 => resume(do interrupt(TimerTick()))
-      case 1 => resume(do interrupt(PS2Keyboard()))
-      case _ => resume(do println("unknown event: ${n.show}"))
-    }
-    def special(n: Int) = n match {
-      case _ => {
-        do println("unknown special ${n.show}")
-        resume(())
-      }
-    }
-  }
+def fault(fault: Int) = {
+  panic("""
+=============
+=== FAULT ===
+=============
+
+${fault.show}
+""")
 }
 
 def os { init: => Nothing / emit[Char] }: Nothing = {
@@ -59,13 +49,27 @@ def main(): Nothing = {
   serial::init()
   header()
 
-  val inbox = interrupts::init()
+  val inbox = interrupts::init(box fault)
   pic::init()
   pit::init(1000)
 
   with os
   with interrupt::on[TimerTick].ignore
   with interrupt::on[PS2Keyboard].handle { keyboard::handler }
+  with interrupt::on[Cascade].ignore
+  with interrupt::on[COM2].ignore
+  with interrupt::on[COM1].ignore
+  with interrupt::on[LPT2].ignore
+  with interrupt::on[FloppyDisk].ignore
+  with interrupt::on[LPT1].ignore
+  with interrupt::on[CMOS].ignore
+  with interrupt::on[Peripheral1].ignore
+  with interrupt::on[Peripheral2].ignore
+  with interrupt::on[Peripheral3].ignore
+  with interrupt::on[PS2Mouse].ignore
+  with interrupt::on[FPU].ignore
+  with interrupt::on[PrimaryATA].ignore
+  with interrupt::on[SecondaryATA].ignore
   with dispatch
   interrupts::idle(inbox) 
 }

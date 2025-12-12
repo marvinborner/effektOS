@@ -2,11 +2,11 @@ global int_table
 int_table:
 %assign i 0
 %rep 32
-	dq except%+i
+	dq exception%+i
 	%assign i i+1
 %endrep
 %rep 224
-	dq irq%+i
+	dq interrupt%+i
 	%assign i i+1
 %endrep
 
@@ -48,18 +48,18 @@ int_table:
 
 %assign i 32
 %rep 224
-irq%+i:
+interrupt%+i:
 	push 0
     push i
-	jmp irq_common
+	jmp interrupt_common
 %assign i i+1
 %endrep
 
-extern irq_handler
-irq_common:
+extern interrupt_handler
+interrupt_common:
 	pushaq 
 	mov rdi, rsp
-	call irq_handler
+	call interrupt_handler
 	popaq 
 	add rsp, 16
 	iretq
@@ -67,23 +67,23 @@ irq_common:
 %assign i 0
 %rep 32
 %if (i < 10) || ((i > 14) && (i < 17)) || ((i > 17) && (i < 21))
-except%+i:
+exception%+i:
     push 0
     push i
-	jmp except_common
+	jmp exception_common
 %else
-except%+i:
+exception%+i:
     push i
-	jmp except_common
+	jmp exception_common
 %endif
 %assign i i+1
 %endrep
 
-extern except_handler
-except_common:
+extern exception_handler
+exception_common:
 	pushaq 
 	mov rdi, rsp
-	call except_handler
+	call exception_handler
 	popaq 
 	add rsp, 16
 	iretq

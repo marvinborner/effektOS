@@ -9,7 +9,7 @@ def ignore[I] { prog: => Nothing / Interrupt[I] }: Nothing =
   try { prog() } with Interrupt[I] { def interrupt(interrupt: I) = resume(()) }
 
 def report[I] { prog: => Nothing / Interrupt[I] }: Nothing =
-  try { prog() } with Interrupt[I] { def interrupt(exception: I) = resume(report("what")) }
+  try { prog() } with Interrupt[I] { def interrupt(exception: I) = resume(report("interrupt\n")) }
 
 def panicOn[I, T] { prog: => T / Interrupt[I] }: T =
   try { prog() } with Interrupt[I] { def interrupt(interrupt: I) = panic("panic") }
