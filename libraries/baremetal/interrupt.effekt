@@ -25,6 +25,44 @@ interface Request {
   def special(n: Int): Unit
 }
 
+record Fault(num: Int)
+
+def show(fault: Fault) = fault.num match {
+  case 0  => "Division Error"
+  case 1  => "Debug"
+  case 2  => "Non-maskable Interrupt"
+  case 3  => "Breakpoint"
+  case 4  => "Overflow"
+  case 5  => "Bound Range Exceeded"
+  case 6  => "Invalid Opcode"
+  case 7  => "Device Not Available"
+  case 8  => "Double Fault"
+  case 9  => "Coprocessor Segment Overrun"
+  case 10 => "Invalid TSS"
+  case 11 => "Segment Not Present"
+  case 12 => "Stack-Segment Fault"
+  case 13 => "General Protection Fault"
+  case 14 => "Page Fault"
+  case 15 => "Reserved"
+  case 16 => "x87 Floating-Point Exception"
+  case 17 => "Alignment Check"
+  case 18 => "Machine Check"
+  case 19 => "SIMD Floating-Point Exception"
+  case 20 => "Virtualization Exception"
+  case 21 => "Control Protection Exception"
+  case 22 => "Reserved"
+  case 23 => "Reserved"
+  case 24 => "Reserved"
+  case 25 => "Reserved"
+  case 26 => "Reserved"
+  case 27 => "Reserved"
+  case 28 => "Hypervisor Injection Exception"
+  case 29 => "VMM Communication Exception"
+  case 30 => "Security Exception"
+  case 31 => "Reserved"
+  case _  => "Unknown"
+}
+
 interface Interrupt[I] {
   def interrupt(interrupt: I): Unit
 }

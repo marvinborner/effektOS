@@ -36,11 +36,11 @@ def newHandler(inbox: Ref[List[Int]]): Int => Unit at {io, global} = {
   handler
 }
 
-def init(exception: Int => Nothing at {io, global}): Ref[List[Int]] = {
+def init(exception: Fault => Nothing at {io, global}): Ref[List[Int]] = {
   initIDT()
 
   val inbox = ref[List[Int]](Nil())
-  installExceptionHandler(exception)
+  installExceptionHandler(box { num => exception(Fault(num)) })
   installInterruptHandler(inbox.newHandler)
   inbox
 }

@@ -24,5 +24,4 @@ def program(): Unit / { read[Char], emit[Char] } = {
   val b = readDecimal()
   " = ${(a - b).show}\n".each
   skipWhitespace()
-  ()
 }
