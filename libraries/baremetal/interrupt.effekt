@@ -27,7 +27,7 @@ interface Request {
 
 record Fault(num: Int)
 
-def show(fault: Fault) = fault.num match {
+def pretty(fault: Fault) = fault.num match {
   case 0  => "Division Error"
   case 1  => "Debug"
   case 2  => "Non-maskable Interrupt"
@@ -67,7 +67,7 @@ interface Interrupt[I] {
   def interrupt(interrupt: I): Unit
 }
 
-def dispatch { prog: => Nothing / Request }: Nothing / {
+def dispatch { prog: => Unit / Request }: Unit / {
   Interrupt[TimerTick], Interrupt[PS2Keyboard], Interrupt[Cascade], Interrupt[COM2], Interrupt[COM1],
   Interrupt[LPT2], Interrupt[FloppyDisk], Interrupt[LPT1], Interrupt[CMOS], Interrupt[Peripheral1],
   Interrupt[Peripheral2], Interrupt[Peripheral3], Interrupt[PS2Mouse], Interrupt[FPU], Interrupt[PrimaryATA],
@@ -96,36 +96,36 @@ def dispatch { prog: => Nothing / Request }: Nothing / {
       case 13 => do interrupt(FPU())
       case 14 => do interrupt(PrimaryATA())
       case 15 => do interrupt(SecondaryATA())
-      case _  => do println("unknown event: ${n.show}")
+      case _  => do println(s"unknown event: ${n.show}")
     })
     def special(n: Int) = n match {
-      case _ => resume(do println("unknown special ${n.show}"))
+      case _ => resume(do println(s"unknown special ${n.show}"))
     }
   }
 }
 
-def handle[I, E] { handle: => Unit / emit[E] } { prog: => Nothing / Interrupt[I] }: Nothing / emit[E] =
+def handle[I, E] { handle: => Unit / emit[E] } { prog: => Unit / Interrupt[I] }: Unit / emit[E] =
   try { prog() } with Interrupt[I] { def interrupt(interrupt: I) = resume(handle()) }
 
-def ignore[I] { prog: => Nothing / Interrupt[I] }: Nothing =
+def ignore[I] { prog: => Unit / Interrupt[I] }: Unit =
   try { prog() } with Interrupt[I] { def interrupt(interrupt: I) = resume(()) }
 
-def report[I] { prog: => Nothing / Interrupt[I] }: Nothing =
-  try { prog() } with Interrupt[I] { def interrupt(exception: I) = resume(report("interrupt\n")) }
+// def report[I] { prog: => Unit / Interrupt[I] }: Unit =
+//   try { prog() } with Interrupt[I] { def interrupt(exception: I) = resume(report("interrupt\n")) }
 
 def panicOn[I, T] { prog: => T / Interrupt[I] }: T =
   try { prog() } with Interrupt[I] { def interrupt(interrupt: I) = panic("panic") }
 
 record on[I]()
 
-def handle[I, E](proxy: on[I]) { d: => Unit / emit[E] } { prog: => Nothing / Interrupt[I] }: Nothing / emit[E] =
+def handle[I, E](proxy: on[I]) { d: => Unit / emit[E] } { prog: => Unit / Interrupt[I] }: Unit / emit[E] =
   handle[I, E] {d} {prog}
 
-def ignore[I](proxy: on[I]) { prog: => Nothing / Interrupt[I] }: Nothing =
+def ignore[I](proxy: on[I]) { prog: => Unit / Interrupt[I] }: Unit =
   ignore[I] {prog}
 
-def report[I](proxy: on[I]) { prog: => Nothing / Interrupt[I] }: Nothing =
-  report[I] {prog}
+// def report[I](proxy: on[I]) { prog: => Unit / Interrupt[I] }: Unit =
+//   report[I] {prog}
 
 def panic[I, T](proxy: on[I]) { prog: => T / Interrupt[I] }: T =
   panicOn[I, T] {prog}

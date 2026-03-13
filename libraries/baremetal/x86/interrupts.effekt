@@ -3,6 +3,8 @@ import framebuffer
 import x86/pic
 import x86/commands
 
+import panic
+
 extern llvm """
   declare %Pos @c_idt_init()
   declare %Pos @c_install_exception_handler(%Pos)

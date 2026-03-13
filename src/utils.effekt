@@ -1,3 +1,5 @@
+import scanner
+
 def looping { prog: => Unit }: Nothing = {
   def go(): Nothing = {
     prog()
@@ -20,5 +22,38 @@ def interruptible { prog: => Unit / emit[Char] }: Unit / { emit[Char], stop } = 
   for[Char] { prog } { ch =>
     if (ch == '\u1b') do stop()
     else do emit(ch)
+  }
+}
+
+def scanning[A, R] { scanner: () => R / Scan[A] }: R / { read[A], emit[A] } = {
+  def upstream(): A / stop = {
+    val a = do read()
+    do emit(a)
+    a
+  }
+  var last = None()
+  try {
+    scanner()
+  } with peek[A] { () =>
+    resume {
+      last match {
+        case None() =>
+          val t = upstream()
+          last = Some(t)
+          return t
+        case Some(t) =>
+          return t
+      }
+    }
+  } with read[A] {
+    resume {
+      last match {
+        case None() =>
+          upstream()
+        case Some(t) =>
+          last = None()
+          return t
+      }
+    }
   }
 }

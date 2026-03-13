@@ -6,6 +6,8 @@ import x86/interrupts
 import framebuffer
 import interrupt
 
+import panic
+
 import ps2/keyboard
 import calculator
 import debug
@@ -26,16 +28,16 @@ def header(): Unit / Debug = {
 }
 
 def fault(fault: Fault) = {
-  panic("""
+  panic(s"""
 =============
 === FAULT ===
 =============
 
-${fault.show}
+${fault.pretty}
 """)
 }
 
-def os { init: => Nothing / emit[Char] }: Nothing = {
+def os { init: => Unit / emit[Char] }: Nothing = {
   with looping
   with source[Char] { init }
   with emit[Char] { ch => framebuffer::print(ch.show) }
@@ -43,7 +45,7 @@ def os { init: => Nothing / emit[Char] }: Nothing = {
   calculator::program()
 }
 
-def main(): Nothing = {
+def loop(): Nothing = {
   with debug
 
   serial::init()
@@ -71,5 +73,11 @@ def main(): Nothing = {
   with interrupt::on[PrimaryATA].ignore
   with interrupt::on[SecondaryATA].ignore
   with dispatch
-  interrupts::idle(inbox) 
+  interrupts::idle(inbox)
+  ()
+}
+
+def main() = {
+  loop()
+  ()
 }
