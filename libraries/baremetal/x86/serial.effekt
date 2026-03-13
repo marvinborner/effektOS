@@ -5,17 +5,17 @@ val PORT = 1016
 def putChar(ch: Char) = outb(PORT, ch.toInt.toByte)
 
 def init() = {
-	outb(PORT + 1, 0.toByte)
-	outb(PORT + 3, 128.toByte)
-	outb(PORT + 0, 3.toByte)
-	outb(PORT + 1, 0.toByte)
-	outb(PORT + 3, 3.toByte)
-	outb(PORT + 2, 199.toByte)
+	outb(PORT + 1, 0x00)
+	outb(PORT + 3, 0x80)
+	outb(PORT + 0, 0x03)
+	outb(PORT + 1, 0x00)
+	outb(PORT + 3, 0x03)
+	outb(PORT + 2, 0xC7)
 
 	// Test serial chip
-	outb(PORT + 4, 30.toByte) // Enable loopback
-	outb(PORT + 0, 174.toByte) // Write
+	outb(PORT + 4, 0x1E) // Enable loopback
+	outb(PORT + 0, 0xAE) // Write
 
 	// Activate
-	outb(PORT + 4, 15.toByte)
+	outb(PORT + 4, 0x0F)
 }
