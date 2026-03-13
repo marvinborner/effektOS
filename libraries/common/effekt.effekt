@@ -38,6 +38,25 @@ namespace llvm {
 // Showing and debugging
 // =====================
 
+extern def print(value: String): Unit =
+  jsWeb "$effekt.println(${value})"
+  jsNode "$effekt.print(${value})"
+  chez "(print_impl ${value})"
+  llvm """
+    call void @c_io_print(%Pos ${value})
+    ret %Pos zeroinitializer ; Unit
+  """
+  vm "effekt::print(String)"
+
+extern def println(value: String): Unit =
+  js "$effekt.println(${value})"
+  chez "(println_impl ${value})"
+  llvm """
+    call void @c_io_println(%Pos ${value})
+    ret %Pos zeroinitializer ; Unit
+  """
+  vm "effekt::println(String)"
+
 extern jsNode """
 $effekt.readln = function readln$impl(callback) {
   const readline = require('node:readline').createInterface({
@@ -59,7 +78,13 @@ extern def readln() at async: String =
     ret void
   """
 
-extern def show(value: Int) at {}: String =
+def println(value: Int): Unit = println(value.show)
+def println(value: Unit): Unit = println(value.show)
+def println(value: Double): Unit = println(value.show)
+def println(value: Bool): Unit = println(value.show)
+def println(value: Byte): Unit = println(value.show)
+
+extern def showBuiltin(value: Int) at {}: String =
   js "'' + ${value}"
   chez "(show-number ${value})"
   llvm """
@@ -68,9 +93,7 @@ extern def show(value: Int) at {}: String =
   """
   vm "effekt::show(Int)"
 
-def show(value: Unit): String = "()"
-
-extern def show(value: Double) at {}: String =
+extern def showBuiltin(value: Double) at {}: String =
   js "'' + ${value}"
   chez "(show-number ${value})"
   llvm """
@@ -79,13 +102,7 @@ extern def show(value: Double) at {}: String =
   """
   vm "effekt::show(Double)"
 
-def show(value: String): String =
-  value
-
-def show(value: Bool): String =
-  if (value) "true" else "false"
-
-extern def show(value: Char) at {}: String =
+extern def showBuiltin(value: Char) at {}: String =
   js "String.fromCodePoint(${value})"
   chez "(string (integer->char ${value}))"
   llvm """
@@ -94,19 +111,33 @@ extern def show(value: Char) at {}: String =
   """
   vm "effekt::show(Char)"
 
-extern def show(value: Byte) at {}: String =
-  js "'' + ${value}"
-  chez "(string ${value})"
+extern def showBuiltin(value: Byte) at {}: String =
+  js "'0x' + ${value}.toString(16).toUpperCase().padStart(2, '0')"
+  chez "(format #f \"0x~2,'0X\" ${value})"
   llvm """
-    %z = call %Pos @c_bytearray_show_Byte(i8 ${value})
+    %z = call %Pos @c_bytearray_show_Byte(%Byte ${value})
     ret %Pos %z
   """
   vm "effekt::show(Byte)"
 
-extern def genericShow[R](value: R) at {}: String =
+extern def inspect[R](value: R) at io: Unit =
+  default { println(show(value)) }
+  vm "effekt::inspect(Any)"
+
+/// A fatal runtime error that cannot be caught
+extern def panic(msg: String) at io: Nothing =
+  js "(function() { throw ${msg} })()"
+  chez "(raise ${msg})"
+  llvm """
+    call void @c_io_println(%Pos ${msg})
+    call void @exit(i32 1)
+    ret %Pos zeroinitializer ; Unit
+  """
+
+extern def show[R](value: R) at {}: String =
   js "$effekt.show(${value})"
   chez "(show_impl ${value})"
-
+  llvm "ret %Pos poison"
 
 // Strings
 // =======
@@ -193,11 +224,7 @@ def genericCompare[R](x: R, y: R): Ordering = {
   }
 }
 
-def show(o: Ordering): String = o match {
-  case Less() => "Less()"
-  case Equal() => "Equal()"
-  case Greater() => "Greater()"
-}
+def println(o: Ordering): Unit = println(o.show)
 
 
 // Comparison ops
@@ -294,6 +321,27 @@ extern def infixNeq(x: Bool, y: Bool) at {}: Bool =
     ret %Pos %adt_boolean
   """
 
+extern def infixEq(x: Byte, y: Byte) at {}: Bool =
+  js "${x} === ${y}"
+  chez "(equal? ${x} ${y})"
+  llvm """
+    %z = icmp eq %Byte ${x}, ${y}
+    %fat_z = zext i1 %z to i64
+    %adt_boolean = insertvalue %Pos zeroinitializer, i64 %fat_z, 0
+    ret %Pos %adt_boolean
+  """
+  vm "effekt::infixEq(Byte, Byte)"
+
+extern def infixNeq(x: Byte, y: Byte) at {}: Bool =
+  js "${x} !== ${y}"
+  chez "(not (equal? ${x} ${y}))"
+  llvm """
+    %z = icmp ne %Byte ${x}, ${y}
+    %fat_z = zext i1 %z to i64
+    %adt_boolean = insertvalue %Pos zeroinitializer, i64 %fat_z, 0
+    ret %Pos %adt_boolean
+  """
+  vm "effekt::infixNeq(Byte, Byte)"
 
 // Math ops
 // ========
@@ -655,13 +703,19 @@ extern def bitwiseXor(x: Int, y: Int) at {}: Int =
   llvm "%z = xor %Int ${x}, ${y} ret %Int %z"
   vm "effekt::bitwiseXor(Int, Int)"
 
+extern def bitwiseNot(x: Int) at {}: Int =
+  js "(~${x})"
+  chez "(lognot ${x})"
+  llvm "%z = xor %Int ${x}, -1 ret %Int %z"
+  vm "effekt::bitwiseNot(Int)"
+
 
 // Byte operations
 // ===============
 extern def toByte(n: Int) at {}: Byte =
-  js "${n}"
+  js "(${n} & 0xFF)"
   llvm "%z = trunc %Int ${n} to %Byte ret %Byte %z"
-  chez "${n}"
+  chez "(logand ${n} 255)"
 
 extern def toInt(n: Byte) at {}: Int =
   js "${n}"
@@ -710,23 +764,37 @@ type OneOrBoth[A, B] {
 
 // Control Flow
 // ============
-interface Control {
-  def break(): Unit
-  def continue(): Unit
-}
 
-def loop { f: () => Unit }: Unit = {
-  def go(): Unit = { f(); go() }
+/// Repeat `action` forever
+def forever { action: () => Unit }: Nothing = {
+  def go(): Nothing = { action(); go() }
   go()
 }
 
-def loop { f: {Control} => Unit }: Unit = try {
-  def go(): Unit = { f {label}; go() }
-  go()
-} with label: Control {
-  def break() = ()
-  def continue() = loop { f }
-}
+/// Signal that we should stop.
+effect stop(): Nothing
+
+/// When the program stops, then to here.
+def boundary { program: () => Unit / stop }: Unit =
+  try { program() } with stop { () }
+
+/// Repeat `action` until `stop` is thrown.
+def loop { action: () => Unit / stop }: Unit =
+  try {
+    def go(): Unit = { action(); go() }
+    go()
+  } with stop {
+    ()
+  }
+
+/// Repeat `action` until `stop` is thrown, supplying the iteration count.
+def loop { action: Int => Unit / stop }: Unit =
+  try {
+    def go(i: Int): Unit = { action(i); go(i + 1) }
+    go(0)
+  } with stop {
+    ()
+  }
 
 /// Calls provided action repeatedly. `start` is inclusive, `end` is not.
 def each(start: Int, end: Int) { action: (Int) => Unit } = {
@@ -736,18 +804,7 @@ def each(start: Int, end: Int) { action: (Int) => Unit } = {
   loop(start)
 }
 
-/// Calls provided action repeatedly with support for breaking. `start` is inclusive, `end` is not.
-def each(start: Int, end: Int) { action: (Int) {Control} => Unit } = {
-  var i = start;
-  loop { {l} =>
-    if (i < end) { val el = i; i = i + 1; action(el){l} }
-    else { l.break() }
-  }
-}
-
 def repeat(n: Int) { action: () => Unit } = each(0, n) { n => action() }
-
-def repeat(n: Int) { action: () {Control} => Unit } = each(0, n) { (n) {l} => action() {l} }
 
 // NOTE: This is emitted by the close hole code action: do not remove unless you also adjust the code action
 /// Scopes a local computation
@@ -760,9 +817,9 @@ def locally[R] { p: => R } : R = p()
 //
 //     "foo ${42} bar ${43}"
 //
-// to the following stream of `literal`s and `splice[Int]`s:
+// to the following stream of `write`s and `splice[Int]`s:
 //
-//     do literal("foo "); do splice(42); do literal(" bar "); do splice(43)
+//     do write("foo "); do splice(42); do write(" bar "); do splice(43)
 //
 // The stream is wrapped into a handler function, which defaults to `stringbuffer::s`
 //
@@ -770,7 +827,8 @@ def locally[R] { p: => R } : R = p()
 //
 // but can be specified by prefixing the string interpolation `custom"..."`.
 
-effect literal(s: String): Unit
+effect write(s: String): Unit
+
 effect splice[A](x: A): Unit
 
 
