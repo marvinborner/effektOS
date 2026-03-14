@@ -8,7 +8,12 @@ import interrupt
 
 import panic
 
-import ps2/keyboard
+import drivers
+import drivers/keyboard
+import drivers/ps2/keyboard
+import drivers/mouse
+import drivers/ps2/mouse
+
 import calculator
 import debug
 import utils
@@ -37,16 +42,17 @@ ${fault.pretty}
 """)
 }
 
-def os { init: => Unit / emit[Char] }: Nothing = {
+def os { drivers: => Unit / Input }: Nothing = {
   with looping
-  with source[Char] { init }
   with emit[Char] { ch => framebuffer::print(ch.show) }
 
-  calculator::program()
+  calculator::program() {drivers}
 }
 
 def loop(): Nothing = {
   with debug
+  with statefully[KeyboardState](empty().ref)
+  with statefully[MouseState](empty().ref)
 
   serial::init()
   header()
@@ -54,10 +60,11 @@ def loop(): Nothing = {
   val inbox = interrupts::init(box fault)
   pic::init()
   pit::init(1000)
+  mouse::init()
 
   with os
   with interrupt::on[TimerTick].ignore
-  with interrupt::on[PS2Keyboard].handle { keyboard::handler }
+  with interrupt::on[PS2Keyboard].handle[PS2Keyboard, KeyboardState] { keyboard::handler }
   with interrupt::on[Cascade].ignore
   with interrupt::on[COM2].ignore
   with interrupt::on[COM1].ignore
@@ -68,7 +75,7 @@ def loop(): Nothing = {
   with interrupt::on[Peripheral1].ignore
   with interrupt::on[Peripheral2].ignore
   with interrupt::on[Peripheral3].ignore
-  with interrupt::on[PS2Mouse].ignore
+  with interrupt::on[PS2Mouse].handle[PS2Mouse, MouseState] { mouse::handler }
   with interrupt::on[FPU].ignore
   with interrupt::on[PrimaryATA].ignore
   with interrupt::on[SecondaryATA].ignore

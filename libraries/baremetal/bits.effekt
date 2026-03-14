@@ -8,3 +8,18 @@ extern def infixAdd(x: Byte, y: Byte) at {}: Byte =
 
 extern def bitwiseOr(x: Byte, y: Byte) at {}: Byte =
   llvm "%z = or %Byte ${x}, ${y} ret %Byte %z"
+
+extern def bitwiseAnd(x: Byte, y: Byte) at {}: Byte =
+  llvm "%z = and %Byte ${x}, ${y} ret %Byte %z"
+
+extern def bitwiseShl(x: Byte, y: Byte) at {}: Byte =
+  llvm "%z = shl %Byte ${x}, ${y} ret %Byte %z"
+
+extern def bitwiseNot(x: Byte) at {}: Byte =
+  llvm "%z = xor %Byte ${x}, -1 ret %Byte %z"
+
+def set?(x: Byte, i: Int) = x.bitwiseAnd(0x01.bitwiseShl(i.toByte)) != 0x00
+
+def set!(x: Byte, i: Int) = x.bitwiseOr(0x01.bitwiseShl(i.toByte))
+
+def unset!(x: Byte, i: Int) = x.bitwiseAnd(0x01.bitwiseShl(i.toByte).bitwiseNot)

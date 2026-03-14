@@ -14,3 +14,11 @@ extern def segfault() at io: Unit =
     call void @segfault()
     ret %Pos zeroinitializer
   """
+
+def assert(x: Bool) =
+  if (x) ()
+  else panic("\n!!!\nassertion failed!\n!!!\n")
+
+def assert(x: Bool, msg: String) =
+  if (x) println(s"${msg}\n")
+  else panic(s"\n!!!\nassertion failed: ${msg}!\n!!!\n")

@@ -1,5 +1,6 @@
 import debug
 import panic
+import drivers
 
 // ISA IRQs
 record TimerTick()
@@ -104,28 +105,28 @@ def dispatch { prog: => Unit / Request }: Unit / {
   }
 }
 
-def handle[I, E] { handle: => Unit / emit[E] } { prog: => Unit / Interrupt[I] }: Unit / emit[E] =
+def handle[I, St] { handle: => Unit / { State[St], Input } } { prog: => Unit / Interrupt[I] }: Unit / { State[St], Input } =
   try { prog() } with Interrupt[I] { def interrupt(interrupt: I) = resume(handle()) }
 
 def ignore[I] { prog: => Unit / Interrupt[I] }: Unit =
   try { prog() } with Interrupt[I] { def interrupt(interrupt: I) = resume(()) }
 
-// def report[I] { prog: => Unit / Interrupt[I] }: Unit =
-//   try { prog() } with Interrupt[I] { def interrupt(exception: I) = resume(report("interrupt\n")) }
+def report[I] { prog: => Unit / Interrupt[I] }: Unit =
+  try { prog() } with Interrupt[I] { def interrupt(exception: I) = resume(report("interrupt\n")) }
 
 def panicOn[I, T] { prog: => T / Interrupt[I] }: T =
   try { prog() } with Interrupt[I] { def interrupt(interrupt: I) = panic("panic") }
 
 record on[I]()
 
-def handle[I, E](proxy: on[I]) { d: => Unit / emit[E] } { prog: => Unit / Interrupt[I] }: Unit / emit[E] =
-  handle[I, E] {d} {prog}
+def handle[I, St](proxy: on[I]) { d: => Unit / { State[St], Input } } { prog: => Unit / Interrupt[I] }: Unit / { State[St], Input } =
+  handle[I, St] {d} {prog}
 
 def ignore[I](proxy: on[I]) { prog: => Unit / Interrupt[I] }: Unit =
   ignore[I] {prog}
 
-// def report[I](proxy: on[I]) { prog: => Unit / Interrupt[I] }: Unit =
-//   report[I] {prog}
+def report[I](proxy: on[I]) { prog: => Unit / Interrupt[I] }: Unit =
+  report[I] {prog}
 
 def panic[I, T](proxy: on[I]) { prog: => T / Interrupt[I] }: T =
   panicOn[I, T] {prog}

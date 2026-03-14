@@ -1,0 +1,2 @@
+record KeyboardState(shift: Bool)
+def empty() = KeyboardState(false)

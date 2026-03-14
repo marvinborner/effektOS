@@ -1,0 +1,5 @@
+record MouseBytes(clicked: Byte, x: Byte, y: Byte, scroll: Byte)
+def empty() = MouseBytes(0x00, 0x00, 0x00, 0x00)
+
+record MouseState(cycle: Int, bytes: MouseBytes)
+def empty() = MouseState(0, empty())

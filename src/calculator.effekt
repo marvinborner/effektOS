@@ -1,7 +1,8 @@
+import scanner
+
 import utils
 import framebuffer
-
-import scanner
+import drivers
 
 type Expr {
   Num(value: Int)
@@ -10,11 +11,14 @@ type Expr {
   Mul(left: Expr, right: Expr)
 }
 
-def program(): Unit / { read[Char], emit[Char] } = {
+def program() { drivers: => Unit / Input }: Unit / Output = {
+  // with mouseReader{drivers}
+  with keyboardReader{drivers}
+
   "Welcome to the Effekt Kalkulator! Please give me your expressions :)\n".each
 
   with loop
-  with onFail { "\ninvalid input".each }
+  with onFail { "\ninvalid input\n".each }
   with interruptible
   with scanning[Char, Unit]
 
@@ -23,6 +27,6 @@ def program(): Unit / { read[Char], emit[Char] } = {
   val op = do read()
   skipWhitespace()
   val b = readDecimal()
-  s" = ${(a - b).show}\n".each
+  s"= ${(a - b).show}\n".each
   skipWhitespace()
 }

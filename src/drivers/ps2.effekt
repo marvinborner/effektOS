@@ -1,0 +1,92 @@
+import bits
+import panic
+import x86/commands
+
+val PORT = 0x60
+val RESEND = 0xFE
+val ACK = 0xFA
+
+val STANDARD_MOUSE = 0
+val WHEEL_MOUSE = 3
+val BUTTON_MOUSE = 4
+val TRANSLATION_KEYBOARD1 = 43841
+val TRANSLATION_KEYBOARD2 = 43969
+val STANDARD_KEYBOARD = 43907
+
+record PS2Device(id: Byte)
+record PS2Status(bits: Byte)
+record PS2Config(bits: Byte)
+record PS2Kind(kind: Int)
+
+def mouse?(device: PS2Kind) = device.kind == STANDARD_MOUSE || device.kind == WHEEL_MOUSE || device.kind == BUTTON_MOUSE
+def keyboard?(device: PS2Kind) = device.kind == TRANSLATION_KEYBOARD1 || device.kind == TRANSLATION_KEYBOARD2 || device.kind == STANDARD_KEYBOARD
+
+def status() = PS2Status(inb(PORT + 0x04))
+
+def out?(status: PS2Status) = status.bits.set?(0)
+def in?(status: PS2Status) = status.bits.set?(1)
+
+effect timeout(): Unit
+
+def noTimeout[R] { prog: => R / timeout }: R =
+  try prog()
+  with timeout { () => panic("timeouted!") }
+
+def ignoreTimeout[R] { prog: => R / timeout }: R =
+  try prog()
+  with timeout { () => resume(()) }
+
+def waitWritable { writer: => Unit }: Unit / timeout = {
+  def go(n: Int): Unit = {
+    if (not(status().in?)) writer()
+    else if (n > 0) go(n - 1)
+    else do timeout()
+  }
+  go(100)
+}
+
+def waitReadable { reader: => Byte }: Byte / timeout = {
+  def go(n: Int): Byte = {
+    if (status().out?) reader()
+    else if (n > 0) go(n - 1)
+    else { do timeout(); 0x00 }
+  }
+  go(100)
+}
+
+def readData() = waitReadable { inb(PORT) }
+
+def writeData(byte: Byte) = waitWritable { outb(PORT, byte) }
+
+def command(byte: Byte) = outb(PORT + 0x04, byte)
+
+def config() = {
+  command(0x20)
+  PS2Config(readData())
+}
+
+def config(config: PS2Config) = {
+  command(PORT)
+  writeData(config.bits)
+}
+
+def write(device: PS2Device, data: Byte): Bool / timeout = {
+  def go(n: Int): Byte = {
+    if (device.id == 0x01)
+      command(0xD4)
+    writeData(data)
+    val response = readData()
+    if (response == RESEND && n > 0) // resend
+      go(n - 1)
+    else response
+  }
+  go(5) == ACK
+}
+
+def kind(device: PS2Device) = {
+  assert(device.write(0xF5))
+  assert(device.write(0xF2))
+  val a = readData()
+  val b = readData()
+  PS2Kind(a.toInt.bitwiseShl(8).bitwiseOr(b.toInt))
+}

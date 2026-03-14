@@ -1,0 +1,53 @@
+interface State[St] {
+  def getState(): St
+  def setState(s: St): Unit
+}
+
+def statefully[St](r: Ref[St]) { prog: => Nothing / State[St] }: Nothing =
+  try prog()
+  with State[St] {
+    def getState() = resume(r.get())
+    def setState(newState) = { r.set(newState); resume(()) }
+  }
+
+// ---
+
+type KeyboardEvent { Press(ch: Char) }
+type MouseEvent { Move(x: Byte, y: Byte); Click(left: Bool, middle: Bool, right: Bool) }
+
+interface Input {
+  def keyboard(ev: KeyboardEvent): Unit
+  def mouse(ev: MouseEvent): Unit
+}
+
+def keyboardReader { drivers: => Unit / Input } { prog: => Unit / read[Char] }: Unit =
+  with source[Char] {
+    try drivers()
+    with Input {
+      def keyboard(ev) = ev match {
+        case Press(ch) => resume(do emit(ch))
+      }
+      def mouse(ev) = resume(())
+      // def mouse(ev) = ev match {
+      //   case Click(left, middle, right) => resume(s"[${left.show},${middle.show},${right.show}]".each)
+      //   case Move(x, y) => resume(s"[${x.toInt.show},${y.toInt.show}]".each)
+      // }
+    }
+  }
+  prog()
+
+// def mouseReader { drivers: => Unit / Input } { prog: => Unit }: Unit / emit[Char] = {
+//   try drivers()
+//   with Input {
+//     def keyboard(ev) = resume(())
+//     def mouse(ev) = ev match {
+//       case Click(left, middle, right) => resume(s"[${left.show},${middle.show},${right.show}]".each)
+//       case Move(x, y) => resume(s"[${x.toInt.show},${y.toInt.show}]".each)
+//     }
+//   }
+//   prog()
+// }
+
+// ---
+
+effect Output = { emit[Char] }
