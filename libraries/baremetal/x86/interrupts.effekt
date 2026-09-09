@@ -7,19 +7,19 @@ import panic
 
 extern llvm """
   declare %Pos @c_idt_init()
-  declare %Pos @c_install_exception_handler(%Pos)
-  declare %Pos @c_install_interrupt_handler(%Pos)
+  declare %Pos @c_install_exception_handler(%Neg)
+  declare %Pos @c_install_interrupt_handler(%Neg)
 """
 
 extern def installExceptionHandler(callback: Int => Nothing at {io, global}) at {io}: Unit =
   llvm """
-    call void @c_install_exception_handler(%Pos ${callback})
+    call void @c_install_exception_handler(%Neg ${callback})
     ret %Pos zeroinitializer
   """
 
 extern def installInterruptHandler(callback: Int => Unit at {io, global}) at {io}: Unit =
   llvm """
-    call void @c_install_interrupt_handler(%Pos ${callback})
+    call void @c_install_interrupt_handler(%Neg ${callback})
     ret %Pos zeroinitializer
   """
 

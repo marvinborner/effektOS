@@ -47,14 +47,14 @@ void idt_set_descriptor(uint8_t vector, void *isr, uint8_t flags)
 
 extern void *int_table[];
 
-static struct Pos effekt_interrupt_handler = { 0 };
-static struct Pos effekt_exception_handler = { 0 };
+static struct Neg effekt_interrupt_handler = { 0 };
+static struct Neg effekt_exception_handler = { 0 };
 
-void c_install_interrupt_handler(const struct Pos callback) {
+void c_install_interrupt_handler(const struct Neg callback) {
 	effekt_interrupt_handler = callback;
 }
 
-void c_install_exception_handler(const struct Pos callback) {
+void c_install_exception_handler(const struct Neg callback) {
 	effekt_exception_handler = callback;
 }
 
