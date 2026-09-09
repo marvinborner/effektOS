@@ -20,5 +20,5 @@ def assert(x: Bool) =
   else panic("\n!!!\nassertion failed!\n!!!\n")
 
 def assert(x: Bool, msg: String) =
-  if (x) println(s"${msg}\n")
+  if (x) ()
   else panic(s"\n!!!\nassertion failed: ${msg}!\n!!!\n")

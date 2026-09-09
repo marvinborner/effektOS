@@ -11,9 +11,25 @@ type Expr {
   Mul(left: Expr, right: Expr)
 }
 
+def handle { drivers: => Unit / Input } { prog: => Unit / next[Char] }: Unit =
+  with source[Char] {
+    try drivers()
+    with Input {
+      def keyboard(ev) = ev match {
+        case Press(ch) => resume(do emit(ch))
+      }
+      def mouse(ev) = ev match {
+        case Click(left, middle, right) =>
+          resume(println(s"[${left.show},${middle.show},${right.show}]\n"))
+        case Move(x, y) =>
+          resume(println(s"[${x.toInt.show},${y.toInt.show}]\n"))
+      }
+    }
+  }
+  prog()
+
 def program() { drivers: => Unit / Input }: Unit / Output = {
-  // with mouseReader{drivers}
-  with keyboardReader{drivers}
+  with handle{drivers}
 
   "Welcome to the Effekt Kalkulator! Please give me your expressions :)\n".each
 

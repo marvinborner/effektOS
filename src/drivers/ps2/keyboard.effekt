@@ -1,8 +1,10 @@
+import bits
 import map
 import x86/commands
 import framebuffer
 
 import drivers
+import drivers/ps2
 import drivers/keyboard
 
 def handler(): Unit / { State[KeyboardState], Input } = {
@@ -16,10 +18,19 @@ def handler(): Unit / { State[KeyboardState], Input } = {
     (74, '-'), (78, '+')
   ], box { (a, b) => compareInt(a, b) })
 
-  val byte = inb(0x60)
-  val pressed = byte.toInt.bitwiseAnd(128) == 0
+  // reads only keyboard's packets, not mouse's
+  def exhaustively(): Unit = {
+    val s = status()
+    if (s.out? && not(s.aux?)) {
+      val byte = inb(PORT)
+      val pressed = byte.toInt.bitwiseAnd(128) == 0
 
-  if (pressed) {
-    do keyboard(Press(keymap.getOrElse(byte.toInt) { '?' }))
+      if (pressed) {
+        do keyboard(Press(keymap.getOrElse(byte.toInt) { '?' }))
+      }
+      exhaustively()
+    }
   }
+
+  exhaustively()
 }

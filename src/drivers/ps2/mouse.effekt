@@ -6,14 +6,14 @@ import drivers
 import drivers/ps2
 import drivers/mouse
 
-import x86/serial
-
 def init() = {
   with noTimeout
 
   // disable PS2
   command(0xAD)
   command(0xA7)
+
+  flush()
 
   var conf = config()
   conf = PS2Config(conf.bits.unset!(0).unset!(1)) // disable IRQs
@@ -28,68 +28,69 @@ def init() = {
   command(0xAB)
   assert(readData() == 0x00, "first port failed")
   command(0xAE) // enable
-  conf = PS2Config(conf.bits.set!(0).unset!(4))
+  conf = PS2Config(conf.bits.unset!(4))
 
   // test second port
   assert(conf.bits.set?(5), "second port not available")
   command(0xA9)
   assert(readData() == 0x00, "second port failed")
   command(0xA8) // enable
-  conf = PS2Config(conf.bits.set!(1).unset!(5))
+  conf = PS2Config(conf.bits.unset!(5))
 
-  // write config
+  // write config (IRQs still masked)
   config(conf)
 
   val keyboard = PS2Device(0x00)
   assert(keyboard.kind.keyboard?, "device 0 is not a keyboard")
-  assert(keyboard.write(0xFF), "keyboard detection failed 1")
-  assert(readData() == 0xAA, "keyboard detection failed 2")
+  assert(keyboard.reset, "keyboard reset failed")
+  assert(keyboard.write(0xF4), "keyboard scanning failed")
 
   val mouse = PS2Device(0x01)
   assert(ignoreTimeout { mouse.kind.mouse? }, "device 1 is not a mouse")
-  assert(mouse.write(0xFF), "mouse detection failed 1")
-  assert(readData() == 0xAA, "mouse detection failed 2")
+  assert(mouse.reset, "mouse reset failed")
 
-  // assert(mouse.write(0xA8), "auxiliary failed")
   assert(mouse.write(0xF6), "default settings failed")
-  assert(mouse.write(0xF4), "enable failed")
-
-  assert(mouse.write(0xF2), "mouse id failed")
-  assert(PS2Kind(readData().toInt).mouse?, "device id is not a mouse")
-
   assert(mouse.write(0xF3), "mouse rate failed 1")
   assert(mouse.write(0x14), "mouse rate failed 2") // 20
+  assert(mouse.write(0xF4), "enable failed")
+
+  flush()
+
+  // enable IRQs
+  conf = PS2Config(conf.bits.set!(0).set!(1))
+  config(conf)
 }
 
 def handler(): Unit / { State[MouseState], Input } = {
-  with ignoreTimeout
-
-  val MouseState(cycle, bytes) = do getState()
-  println(s"${cycle.show}\n")
-  cycle match {
-    case 0 => {
-      val clicked = readData()
-      println(s"${clicked.toInt.show}\n")
-      if (clicked.set?(4))
-        do setState(MouseState(cycle + 1, MouseBytes(clicked, 0x00, 0x00, 0x00)))
-    }
-    case 1 => {
-      val x = readData()
-      do setState(MouseState(cycle + 1, MouseBytes(bytes.clicked, x, 0x00, 0x00)))
-    }
-    case 2 => {
-      val y = readData()
-      do setState(MouseState(cycle + 1, MouseBytes(bytes.clicked, bytes.x, y, 0x00)))
-    }
-    // case 3 => // wheel TODO
-    case _ => {
-      do setState(MouseState(0, empty()))
-      do mouse(Move(bytes.x, bytes.y))
-      do mouse(Click(
-        bytes.clicked.set?(1), // left
-        bytes.clicked.set?(3), // middle
-        bytes.clicked.set?(2)  // right
-      ))
+  def step(byte: Byte): Unit = {
+    val MouseState(cycle, bytes) = do getState()
+    cycle match {
+      case 0 =>
+        // (bit 3 should always be set)
+        if (byte.set?(3))
+          do setState(MouseState(1, MouseBytes(byte, 0x00, 0x00, 0x00)))
+      case 1 =>
+        do setState(MouseState(2, MouseBytes(bytes.clicked, byte, 0x00, 0x00)))
+      case _ => {
+        do setState(MouseState(0, empty()))
+        do mouse(Move(bytes.x, byte))
+        do mouse(Click(
+          bytes.clicked.set?(0), // left
+          bytes.clicked.set?(2), // middle
+          bytes.clicked.set?(1)  // right
+        ))
+      }
     }
   }
+
+  // reads only mouse's packets, not keyboard's
+  def exhaustively(): Unit = {
+    val s = status()
+    if (s.out? && s.aux?) {
+      step(inb(PORT))
+      exhaustively()
+    }
+  }
+
+  exhaustively()
 }
