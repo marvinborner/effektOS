@@ -24,7 +24,7 @@ def program() { drivers: => Unit / Input }: Unit / Output = {
 
   val a = readDecimal()
   skipWhitespace()
-  val op = do read()
+  val op = do next()
   skipWhitespace()
   val b = readDecimal()
   s"= ${(a - b).show}\n".each

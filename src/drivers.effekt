@@ -20,7 +20,7 @@ interface Input {
   def mouse(ev: MouseEvent): Unit
 }
 
-def keyboardReader { drivers: => Unit / Input } { prog: => Unit / read[Char] }: Unit =
+def keyboardReader { drivers: => Unit / Input } { prog: => Unit / next[Char] }: Unit =
   with source[Char] {
     try drivers()
     with Input {

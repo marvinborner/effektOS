@@ -25,9 +25,9 @@ def interruptible { prog: => Unit / emit[Char] }: Unit / { emit[Char], stop } = 
   }
 }
 
-def scanning[A, R] { scanner: () => R / Scan[A] }: R / { read[A], emit[A] } = {
+def scanning[A, R] { scanner: () => R / Scan[A] }: R / { next[A], emit[A] } = {
   def upstream(): A / stop = {
-    val a = do read()
+    val a = do next()
     do emit(a)
     a
   }
@@ -45,7 +45,7 @@ def scanning[A, R] { scanner: () => R / Scan[A] }: R / { read[A], emit[A] } = {
           return t
       }
     }
-  } with read[A] {
+  } with next[A] {
     resume {
       last match {
         case None() =>

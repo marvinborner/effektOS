@@ -62,7 +62,7 @@ def init() = {
 }
 
 def handler(): Unit / { State[MouseState], Input } = {
-  with noTimeout
+  with ignoreTimeout
 
   val MouseState(cycle, bytes) = do getState()
   println(s"${cycle.show}\n")
