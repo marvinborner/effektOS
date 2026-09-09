@@ -1,69 +1,42 @@
-// modified from limine/test/limine (Mintsuki, BSD)
+#include <errno.h>
+#include <inttypes.h>
+#include <limits.h>
+#include <stdbool.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
 
-#define REQUEST __attribute__((section(".limine_requests")))
-#define PACKED __attribute__((packed))
-
-__attribute__((noreturn)) void hcf(void)
-{
-	__asm__ volatile("cli");
-	for (;;) {
-		__asm__ volatile("hlt");
-	}
-}
-
-// for testing
-void segfault(void)
-{
-	volatile int *p = (int *)0;
-	*p = 42;
-}
-
-static struct flanterm_context *ft_ctx = 0;
-
-#include "../limine.h"
-
-REQUEST static volatile struct limine_framebuffer_request framebuffer_request = {
-	.id = LIMINE_FRAMEBUFFER_REQUEST_ID,
-	.revision = 0,
-	.response = 0
-};
-
-REQUEST static volatile struct limine_memmap_request memmap_request = {
-	.id = LIMINE_MEMMAP_REQUEST_ID,
-	.revision = 0,
-	.response = 0
-};
-
-REQUEST static volatile struct limine_stack_size_request stack_size_request = {
-	.id = LIMINE_STACK_SIZE_REQUEST_ID,
-	.revision = 0,
-	.response = 0,
-	.stack_size = 0x8000000 // 128MB
-};
-
-#include "../baremetal/heap.c"
-#include "../baremetal/memory.c"
-#include "../flanterm/src/flanterm.c"
-#include "../flanterm/src/flanterm_backends/fb.c"
+#define DEBUG_REFCOUNT (false)
 
 #include "types.c"
 #include "bytearray.c"
-#include "../baremetal/framebuffer.c"
+#include "io.c"
 #include "panic.c"
 
-#include "../baremetal/x86/interrupts.c"
 
-extern void effektMain(void);
+extern void effektMain();
 
-void kmain(void);
-void kmain(void)
-{
-	// gdt_init();
-	memory_init();
-	fb_init();
+int program_argc;
+char** program_argv;
 
-	effektMain();
-	fb_print("Effekt returned?!");
-	while (1)
-		__asm__ volatile("hlt");
+struct Pos c_get_arg(uint64_t idx) {
+    if(idx < (uint64_t)program_argc) {
+        return c_bytearray_from_nullterminated_string(program_argv[idx]);
+    } else {
+        return c_bytearray_new(0);
+    }
+}
+uint64_t c_get_argc() {
+    return program_argc;
+}
+
+int main(int argc, char *argv[]) {
+    program_argc = argc;
+    program_argv = argv;
+    setvbuf(stdout, NULL, _IOLBF, BUFSIZ);
+    effektMain();
+    uv_loop_t *loop = uv_default_loop();
+    uv_run(loop, UV_RUN_DEFAULT);
+    return uv_loop_close(loop);
 }

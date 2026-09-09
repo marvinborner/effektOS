@@ -3,7 +3,7 @@ type Short = Int
 def toShort(byte: Byte) = byte.toInt
 def toShort(byte: Int) = byte
 
-extern def infixAdd(x: Byte, y: Byte) at {}: Byte =
+extern def infixPlus(x: Byte, y: Byte) at {}: Byte =
   llvm "%z = add %Byte ${x}, ${y} ret %Byte %z"
 
 extern def bitwiseOr(x: Byte, y: Byte) at {}: Byte =

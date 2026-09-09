@@ -3,6 +3,7 @@
 declare i64 @c_get_argc()
 declare %Pos @c_get_arg(i64)
 
+declare void @c_io_print(%Pos)
 declare void @c_io_println(%Pos)
 declare %Pos @c_io_readln()
 declare %Double @c_io_random()
@@ -24,6 +25,7 @@ declare %Int @c_bytearray_size(%Pos)
 declare %Byte @c_bytearray_get(%Pos, %Int)
 declare %Pos @c_bytearray_set(%Pos, %Int, %Byte)
 
+declare %Pos @c_bytearray_copy(%Pos, %Int, %Pos, %Int, %Int)
 declare ptr @c_bytearray_data(%Pos)
 declare %Pos @c_bytearray_construct(i64, ptr)
 
