@@ -26,16 +26,13 @@ ${fault.pretty}
 """)
 }
 
-def output { outputs: => Nothing / Output }: Nothing / Global = {
+def output { outputs: => Nothing / Output }: Nothing / Global =
   with graphics::handler
   outputs()
-}
 
-def os { inputs: => Nothing / Input }: Nothing / { Output, Global } = {
+def os { inputs: => Nothing / Input }: Nothing / { Output, Global } =
   with syscalls
-
-  windows::start() {inputs} // no global state!
-}
+  windows::start() { inputs } // no global state!
 
 def input { requests: => Nothing / Request }: Nothing / { Input, Global } = {
   with interrupt::handler[TimerTick, TimerState] { timer::handler }

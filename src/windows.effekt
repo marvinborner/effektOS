@@ -1,4 +1,5 @@
 import capabilities/graphics
+import windows/contexts
 import syscalls
 import drivers
 
@@ -14,10 +15,9 @@ def header(): Unit / emit[Char] = {
   logo.each
 }
 
+
 def start { inputs: => Nothing / Input }: Nothing / { Output, Syscall } = {
-  val GraphicsContext(pitch, height, buffer) = do graphicsContext()
-  each(0, height * pitch) { i => set(buffer, i, 0xff) };
-  do framebuffer(Redraw(buffer))
+  with contextManager
 
   try inputs()
   with keyboard {
@@ -27,5 +27,5 @@ def start { inputs: => Nothing / Input }: Nothing / { Output, Syscall } = {
     case Click(left, middle, right) => resume(())
     case Move(x, y) => resume(())
   }
-  with tick { resume(()) }
+  with tick { resume(do contexts::redrawDirty()) }
 }

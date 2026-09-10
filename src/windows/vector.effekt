@@ -1,0 +1,35 @@
+import utils
+
+record Vector(x: Double, y: Double)
+record Geometry(size: Vector, depth: Int, buffer: ByteArray)
+
+def infixPlus(v1: Vector, v2: Vector) = Vector(v1.x + v2.x, v1.y + v2.y)
+def infixMinus(v1: Vector, v2: Vector) = Vector(v1.x - v2.x, v1.y - v2.y)
+def infixPlus(v: Vector, s: Double) = Vector(v.x + s, v.y + s)
+def infixStar(v: Vector, s: Double) = Vector(v.x * s, v.y * s)
+def infixSlash(v: Vector, s: Double) = Vector(v.x / s, v.y / s)
+
+def infixEq(v1: Vector, v2: Vector) = v1.x.equal?(v2.x) && v1.y.equal?(v2.y)
+
+def dot(v1: Vector, v2: Vector) = (v1.x * v2.x) + (v1.y * v2.y)
+def magnitude(v: Vector) = sqrt(v.dot(v))
+def normalize(v: Vector) = {
+  val mag = v.magnitude
+  if (mag < 0.000000000001) v
+  else v * (1.0 / mag)
+}
+
+def rotate(v: Vector, a: Double) = Vector(v.x * cos(a) - v.y * sin(a), v.x * sin(a) + v.y * cos(a))
+def direction(v1: Vector, v2: Vector) = Vector(v2.x - v1.x, v2.y - v1.y)
+
+extern def acos(x: Double) at {}: Double =
+  llvm "%z = call %Double @acos(double ${x}) ret %Double %z"
+
+def signum(x: Double) = if (x > 0.0) 1.0 else if (x < 0.0) -1.0 else 0.0
+
+/// signed angle from v1 to v2, in [-pi,pi]
+def angle(v1: Vector, v2: Vector) = {
+  val a = v1.normalize
+  val b = v2.normalize
+  signum((b.y * a.x) - (a.y * b.x)) * acos(max(-1.0, min(1.0, a.dot(b))))
+}

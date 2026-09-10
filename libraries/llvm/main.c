@@ -44,11 +44,13 @@ REQUEST static volatile struct limine_stack_size_request stack_size_request = {
 
 #include "../baremetal/x86/interrupts.c"
 
+extern void enable_sse(void);
 extern void effektMain(void);
 
 void kmain(void);
 void kmain(void)
 {
+	enable_sse();
 	memory_init();
 
 	effektMain();

@@ -1,0 +1,12 @@
+import windows/vector
+
+record Color(red: Double, green: Double, blue: Double)
+
+def fill(on: Geometry, byte: Byte) =
+  each(0, (on.size.x * on.size.y * on.depth.toDouble).toInt) { i =>
+    set(on.buffer, i, byte)
+  }
+
+def overlay(on: Geometry, other: Geometry, at: Vector): Unit = <>
+
+def square(on: Geometry, from: Vector, to: Vector, color: Color) = <>

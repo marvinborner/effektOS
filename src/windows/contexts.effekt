@@ -1,0 +1,59 @@
+import windows/geometry
+import windows/vector
+import syscalls
+import drivers // TODO: abstraction leak
+
+import set
+import map
+
+type ContextId = Int
+record Context(id: ContextId, geometry: Geometry)
+record Managed(position: Vector, context: Context)
+
+interface ContextManagement {
+  def freshContext(size: Vector): Context
+  def markDirty(id: ContextId): Unit
+  def redrawDirty(): Unit
+  def destroy(id: ContextId): Unit
+}
+
+def contextManager { wm: => Nothing / ContextManagement }: Nothing / { Output, Syscall } = {
+  var counter = 0
+  val dirty = set::empty[ContextId](box compareInt).ref
+  val managed = map::empty[ContextId, Managed](box compareInt).ref
+
+  val GPUContext(pitch, depth, width, height, gpuBuffer) = do gpuContext()
+  val gpuGeometry = Geometry(Vector(width.toDouble, height.toDouble), depth, gpuBuffer)
+  gpuGeometry.fill(0xff)
+
+  do framebuffer(Redraw(gpuBuffer))
+
+  try wm()
+  with ContextManagement {
+    def freshContext(size) = {
+      counter = counter + 1
+      val buffer = bytearray((size.x * size.y * depth.toDouble).toInt, 0x00)
+      val context = Context(counter, Geometry(size, depth, buffer))
+      managed.map { m => m.put(counter, Managed(Vector(42.0, 42.0), context)) }
+      resume(context)
+    }
+
+    def markDirty(id: ContextId) = {
+      resume(dirty.map { d => d.set::insert(id) })
+    }
+
+    def redrawDirty() = if (not(dirty.get.isEmpty)) {
+      dirty.get.foreach { id =>
+        with val Managed(position, Context(id, geometry)) = managed.get.get(id).foreach
+        gpuGeometry.overlay(geometry, position)
+      }
+      resume(do framebuffer(Redraw(gpuBuffer)))
+    } else resume(())
+
+    def destroy(id: ContextId) = {
+      dirty.map { d => d.set::delete(id) }
+      managed.map { m => m.map::delete(id) }
+      resume(())
+    }
+  }
+}

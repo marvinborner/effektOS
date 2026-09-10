@@ -13,6 +13,16 @@ def nothing { prog: => Unit }: Nothing = {
   <>
 }
 
+extern def equal?(x: Double, y: Double) at {}: Bool =
+  js "(${x} === ${y})"
+  chez "(= ${x} ${y})"
+  llvm """
+    %z = fcmp oeq %Double ${x}, ${y}
+    %fat_z = zext i1 %z to i64
+    %adt_boolean = insertvalue %Pos zeroinitializer, i64 %fat_z, 0
+    ret %Pos %adt_boolean
+  """
+
 def emit[A, R] { f: A => Unit } { prog: => R / emit[A] }: R = {
   try prog()
   with emit[A] { v => resume(f(v)) }

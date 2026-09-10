@@ -50,7 +50,7 @@ effect Input = { keyboard, mouse, tick }
 
 type FramebufferEvent { Redraw(buffer: ByteArray) }
 
-record GraphicsContext(pitch: Int, height: Int, buffer: ByteArray)
+record GPUContext(pitch: Int, depth: Int, width: Int, height: Int, buffer: ByteArray)
 
 effect framebuffer(ev: FramebufferEvent): Unit
 effect Output = { framebuffer }

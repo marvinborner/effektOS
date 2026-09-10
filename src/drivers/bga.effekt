@@ -80,9 +80,10 @@ def handler { prog: => Nothing / framebuffer }: Nothing / State[FramebufferState
   }
 }
 
+// fresh buffer with same characteristics
 def context() = {
   val BGAFramebufferState(pitch, depth, width, height, fb) = do getState[FramebufferState]()
     else panic("invalid state")
   val buffer = bytearray::allocate(height * pitch)
-  GraphicsContext(pitch, height, buffer)
+  GPUContext(pitch, depth, width, height, buffer)
 }
