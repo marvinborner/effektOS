@@ -10,11 +10,14 @@ libraries/limine.h:
 out/interrupts.o: libraries/baremetal/x86/interrupts.asm
 	nasm -f elf64 libraries/baremetal/x86/interrupts.asm -o out/interrupts.o
 
+out/fpu.o: libraries/baremetal/x86/fpu.asm
+	nasm -f elf64 libraries/baremetal/x86/fpu.asm -o out/fpu.o
+
 out/main.o: libraries/limine.h
 	effekt src/main.effekt $(EFFEKTFLAGS)
 
-out/effektos: out/main.o out/interrupts.o
-	ld -m elf_x86_64 -nostdlib -static -z max-page-size=0x1000 --gc-sections -T linker.lds -o $@ out/main.o out/main.ll.o out/interrupts.o
+out/effektos: out/main.o out/interrupts.o out/fpu.o
+	ld -m elf_x86_64 -nostdlib -static -z max-page-size=0x1000 --gc-sections -T linker.lds -o $@ out/main.o out/main.ll.o out/interrupts.o out/fpu.o
 
 ovmf/OVMF.fd:
 	mkdir -p ovmf

@@ -26,9 +26,9 @@ index ba610726a..a80f32dc6 100644
  
 -    exec(clangArgs: _*)
 +    if (C.config.baremetal()) {
-+      clangArgs = Seq(clang, "-c", llPath, "-O2", "-Wall", "-Wextra", "-pedantic", "-Wno-override-module", "-ffreestanding", "-fno-stack-protector", "-fno-stack-check", "-fno-lto", "-fno-PIC", "-fno-pie", "-ffunction-sections", "-fdata-sections", "-nostdlib", "-fno-exceptions", "-fno-unwind-tables", "-fno-asynchronous-unwind-tables", "-m64", "-march=x86-64", "-mabi=sysv", "-mno-80387", "-mno-mmx", "-mno-sse", "-mno-sse2", "-mno-red-zone", "-mcmodel=kernel", "-static", "-o", f"${executableFile}.ll.o", "-ggdb3")
++      clangArgs = Seq(clang, "-c", llPath, "-O2", "-Wall", "-Wextra", "-pedantic", "-Wno-override-module", "-ffreestanding", "-fno-stack-protector", "-fno-stack-check", "-fno-lto", "-fno-PIC", "-fno-pie", "-ffunction-sections", "-fdata-sections", "-nostdlib", "-fno-exceptions", "-fno-unwind-tables", "-fno-asynchronous-unwind-tables", "-m64", "-march=x86-64", "-mabi=sysv", "-mno-80387", "-mno-mmx", "-msse", "-msse2", "-mno-red-zone", "-mcmodel=kernel", "-static", "-o", f"${executableFile}.ll.o", "-ggdb3")
 +      exec(clangArgs: _*)
-+      clangArgs = Seq(clang, "-c", clangMainFile, "-O2", "-Wall", "-Wextra", "-pedantic", "-Wno-override-module", "-ffreestanding", "-fno-stack-protector", "-fno-stack-check", "-fno-lto", "-fno-PIC", "-fno-pie", "-ffunction-sections", "-fdata-sections", "-nostdlib", "-fno-exceptions", "-fno-unwind-tables", "-fno-asynchronous-unwind-tables", "-m64", "-march=x86-64", "-mabi=sysv", "-mno-80387", "-mno-mmx", "-mno-sse", "-mno-sse2", "-mno-red-zone", "-mcmodel=kernel", "-static", "-o", f"${executableFile}.o", "-ggdb3")
++      clangArgs = Seq(clang, "-c", clangMainFile, "-O2", "-Wall", "-Wextra", "-pedantic", "-Wno-override-module", "-ffreestanding", "-fno-stack-protector", "-fno-stack-check", "-fno-lto", "-fno-PIC", "-fno-pie", "-ffunction-sections", "-fdata-sections", "-nostdlib", "-fno-exceptions", "-fno-unwind-tables", "-fno-asynchronous-unwind-tables", "-m64", "-march=x86-64", "-mabi=sysv", "-mno-80387", "-mno-mmx", "-msse", "-msse2", "-mno-red-zone", "-mcmodel=kernel", "-static", "-o", f"${executableFile}.o", "-ggdb3")
 +      exec(clangArgs: _*)
 +    } else exec(clangArgs: _*)
  
