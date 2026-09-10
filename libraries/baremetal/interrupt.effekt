@@ -106,7 +106,7 @@ def dispatch { prog: => Nothing / Request }: Nothing / {
 def handler[I, St] { handle: => Unit / { State[St], Input } } { prog: => Nothing / Interrupt[I] }: Nothing / { State[St], Input } =
   try { prog() } with Interrupt[I] { def interrupt(interrupt: I) = resume(handle()) }
 
-def ignore[I] { prog: => Nothing / Interrupt[I] }: Nothing =
+def ignored[I] { prog: => Nothing / Interrupt[I] }: Nothing =
   try { prog() } with Interrupt[I] { def interrupt(interrupt: I) = resume(()) }
 
 def report[I] { prog: => Nothing / Interrupt[I] }: Nothing =
@@ -121,7 +121,7 @@ def handle[I, St](proxy: on[I]) { handle: => Unit / { State[St], Input } } { pro
   handler[I, St] {handle} {prog}
 
 def ignore[I](proxy: on[I]) { prog: => Nothing / Interrupt[I] }: Nothing =
-  ignore[I] {prog}
+  ignored[I] {prog}
 
 def report[I](proxy: on[I]) { prog: => Nothing / Interrupt[I] }: Nothing =
   report[I] {prog}

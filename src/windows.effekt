@@ -1,0 +1,31 @@
+import capabilities/graphics
+import syscalls
+import drivers
+
+def header(): Unit / emit[Char] = {
+  val logo = """
+  _____     ______  __  __     _    _    ____   _____
+ (_____)   |  ____|/ _|/ _|   | |  | |  / __ \ / ____|
+   ___     | |__  | |_| |_ ___| | _| |_| |  | | (___
+  (___)    |  __| |  _|  _/ _ \ |/ / __| |  | |\___ \
+  _____    | |____| | | ||  __/   <| |_| |__| |____) |
+ (_____)   |______|_| |_| \___|_|\_\\__|\____/|_____/
+"""
+  logo.each
+}
+
+def start { inputs: => Nothing / Input }: Nothing / { Output, Syscall } = {
+  val GraphicsContext(pitch, height, buffer) = do graphicsContext()
+  each(0, height * pitch) { i => set(buffer, i, 0xff) };
+  do framebuffer(Redraw(buffer))
+
+  try inputs()
+  with keyboard {
+    case Press(ch) => resume(())
+  }
+  with mouse {
+    case Click(left, middle, right) => resume(())
+    case Move(x, y) => resume(())
+  }
+  with tick { resume(()) }
+}

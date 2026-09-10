@@ -1,0 +1,12 @@
+import drivers
+import capabilities/graphics
+
+interface Syscall {
+  def graphicsContext(): GraphicsContext
+}
+
+def syscalls { prog: => Nothing / { Output, Syscall } }: Nothing / { Output, Global } =
+  try prog()
+  with Syscall {
+    def graphicsContext() = resume(graphics::context())
+  }

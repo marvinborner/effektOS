@@ -10,7 +10,7 @@ def state[St](r: Ref[St]) { prog: => Nothing / State[St] }: Nothing =
     def setState(newState) = { r.set(newState); resume(()) }
   }
 
-// --- driver states
+// --- driver states ---
 
 record PS2MouseBytes(clicked: Byte, x: Byte, y: Byte, scroll: Byte)
 
@@ -36,7 +36,7 @@ type FramebufferState {
 
 effect Global = { State[KeyboardState], State[MouseState], State[TimerState], State[FramebufferState] }
 
-// --- input events
+// --- input events ---
 
 type KeyboardEvent { Press(ch: Char) }
 type MouseEvent { Move(x: Byte, y: Byte); Click(left: Bool, middle: Bool, right: Bool) }
@@ -46,9 +46,11 @@ effect mouse(ev: MouseEvent): Unit
 effect tick(): Unit
 effect Input = { keyboard, mouse, tick }
 
-// --- output events
+// --- output events ---
 
 type FramebufferEvent { Redraw(buffer: ByteArray) }
 
+record GraphicsContext(pitch: Int, height: Int, buffer: ByteArray)
+
 effect framebuffer(ev: FramebufferEvent): Unit
-effect Output = { emit[Char], framebuffer }
+effect Output = { framebuffer }

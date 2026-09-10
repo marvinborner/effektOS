@@ -7,29 +7,14 @@ import interrupt
 import panic
 
 import drivers
+import syscalls
 import capabilities/timer
 import capabilities/graphics
 import capabilities/keyboard
 import capabilities/mouse
 
-import graphics/framebuffer
-
-import calculator
+import windows
 import utils
-
-import scanner
-
-def header(): Unit / Output = {
-  val logo = """
-  _____     ______  __  __     _    _    ____   _____
- (_____)   |  ____|/ _|/ _|   | |  | |  / __ \ / ____|
-   ___     | |__  | |_| |_ ___| | _| |_| |  | | (___
-  (___)    |  __| |  _|  _/ _ \ |/ / __| |  | |\___ \
-  _____    | |____| | | ||  __/   <| |_| |__| |____) |
- (_____)   |______|_| |_| \___|_|\_\\__|\____/|_____/
-"""
-  logo.each
-}
 
 def fault(fault: Fault) = {
   panic(s"""
@@ -42,34 +27,33 @@ ${fault.pretty}
 }
 
 def output { outputs: => Nothing / Output }: Nothing / Global = {
-  with emit[Char, Nothing] { ch => () }
   with graphics::handler
   outputs()
 }
 
 def os { inputs: => Nothing / Input }: Nothing / { Output, Global } = {
-  with looping
+  with syscalls
 
-  calculator::program() {inputs}
+  windows::start() {inputs} // no global state!
 }
 
 def input { requests: => Nothing / Request }: Nothing / { Input, Global } = {
   with interrupt::handler[TimerTick, TimerState] { timer::handler }
   with interrupt::handler[PS2Keyboard, KeyboardState] { keyboard::handler }
-  with interrupt::on[Cascade].ignore
-  with interrupt::on[COM2].ignore
-  with interrupt::on[COM1].ignore
-  with interrupt::on[LPT2].ignore
-  with interrupt::on[FloppyDisk].ignore
-  with interrupt::on[LPT1].ignore
-  with interrupt::on[CMOS].ignore
-  with interrupt::on[Peripheral1].ignore
-  with interrupt::on[Peripheral2].ignore
-  with interrupt::on[Peripheral3].ignore
+  with interrupt::ignored[Cascade]
+  with interrupt::ignored[COM2]
+  with interrupt::ignored[COM1]
+  with interrupt::ignored[LPT2]
+  with interrupt::ignored[FloppyDisk]
+  with interrupt::ignored[LPT1]
+  with interrupt::ignored[CMOS]
+  with interrupt::ignored[Peripheral1]
+  with interrupt::ignored[Peripheral2]
+  with interrupt::ignored[Peripheral3]
   with interrupt::handler[PS2Mouse, MouseState] { mouse::handler }
-  with interrupt::on[FPU].ignore
-  with interrupt::on[PrimaryATA].ignore
-  with interrupt::on[SecondaryATA].ignore
+  with interrupt::ignored[FPU]
+  with interrupt::ignored[PrimaryATA]
+  with interrupt::ignored[SecondaryATA]
   with dispatch
   requests()
 }
