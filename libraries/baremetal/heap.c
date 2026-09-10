@@ -92,22 +92,27 @@ static void add_node(bin_t *bin, node_t *node)
 
 static void remove_node(bin_t *bin, node_t *node)
 {
-	if (!bin->head)
+	if (!bin || !bin->head)
 		return;
+
 	if (bin->head == node) {
-		bin->head = bin->head->next;
+		bin->head = node->next;
+		if (bin->head)
+			bin->head->prev = 0;
+		node->next = 0;
+		node->prev = 0;
 		return;
 	}
 
 	node_t *temp = bin->head->next;
 	while (temp) {
 		if (temp == node) {
-			if (!temp->next) {
-				temp->prev->next = 0;
-			} else {
+			if (temp->prev)
 				temp->prev->next = temp->next;
+			if (temp->next)
 				temp->next->prev = temp->prev;
-			}
+			node->next = 0;
+			node->prev = 0;
 			return;
 		}
 		temp = temp->next;
@@ -156,11 +161,14 @@ void *heap_alloc(heap_t *heap, size_t size)
 
 	while (!found) {
 		if (index + 1 >= BIN_COUNT)
-			return NULL;
+			hole("out of memory");
 
 		temp = heap->bins[++index];
 		found = get_best_fit(temp, size);
 	}
+
+	remove_node(heap->bins[index], found);
+	found->hole = 0;
 
 	if ((found->size - size) > (overhead + MIN_ALLOC_SZ)) {
 		node_t *split = (node_t *)(((char *)found + sizeof(node_t) +
@@ -172,26 +180,17 @@ void *heap_alloc(heap_t *heap, size_t size)
 
 		create_foot(split);
 
-		unsigned int new_idx = get_bin_index(split->size);
-
-		add_node(heap->bins[new_idx], split);
-
 		found->size = size;
 		create_foot(found);
-	}
 
-	found->hole = 0;
-	remove_node(heap->bins[index], found);
+		add_node(heap->bins[get_bin_index(split->size)], split);
+	}
 
 	node_t *wild = get_wilderness(heap);
-	if (wild->size < MIN_WILDERNESS) {
-		unsigned int success = expand(heap, 0x1000);
-		if (success == 0) {
-			return NULL;
-		}
-	} else if (wild->size > MAX_WILDERNESS) {
+	if (wild->hole && wild->size < MIN_WILDERNESS)
+		expand(heap, 0x1000);
+	else if (wild->hole && wild->size > MAX_WILDERNESS)
 		contract(heap, 0x1000);
-	}
 
 	found->prev = 0;
 	found->next = 0;
@@ -200,44 +199,36 @@ void *heap_alloc(heap_t *heap, size_t size)
 
 void heap_free(heap_t *heap, void *p)
 {
-	bin_t *list;
-	footer_t *new_foot, *old_foot;
+	if (p == NULL)
+		return;
 
 	node_t *head = (node_t *)((char *)p - offset);
-	if (head == (node_t *)(uintptr_t)heap->start) {
-		head->hole = 1;
-		add_node(heap->bins[get_bin_index(head->size)], head);
+
+	if (head->hole) {
+		hole("double free");
 		return;
 	}
 
-	node_t *next = (node_t *)((char *)get_foot(head) + sizeof(footer_t));
-	footer_t *f = (footer_t *)((char *)head - sizeof(footer_t));
-	node_t *prev = f->header;
+	if ((char *)head > (char *)(uintptr_t)heap->start) {
+		footer_t *f = (footer_t *)((char *)head - sizeof(footer_t));
+		node_t *prev = f->header;
 
-	if (prev->hole) {
-		list = heap->bins[get_bin_index(prev->size)];
-		remove_node(list, prev);
+		if (prev && prev->hole) {
+			remove_node(heap->bins[get_bin_index(prev->size)],
+				    prev);
 
-		prev->size += overhead + head->size;
-		new_foot = get_foot(head);
-		new_foot->header = prev;
-
-		head = prev;
+			prev->size += overhead + head->size;
+			head = prev;
+			create_foot(head);
+		}
 	}
 
-	if (next->hole) {
-		list = heap->bins[get_bin_index(next->size)];
-		remove_node(list, next);
+	node_t *next = (node_t *)((char *)get_foot(head) + sizeof(footer_t));
+	if ((char *)next < (char *)(uintptr_t)heap->end && next->hole) {
+		remove_node(heap->bins[get_bin_index(next->size)], next);
 
 		head->size += overhead + next->size;
-
-		old_foot = get_foot(next);
-		old_foot->header = 0;
-		next->size = 0;
-		next->hole = 0;
-
-		new_foot = get_foot(head);
-		new_foot->header = head;
+		create_foot(head);
 	}
 
 	head->hole = 1;
@@ -272,7 +263,6 @@ void *heap_realloc(heap_t *heap, void *p, size_t sz)
 
 unsigned int expand(heap_t *heap, size_t sz)
 {
-	hole("expanding heap not implemented");
 	(void)heap;
 	(void)sz;
 	return 0;
