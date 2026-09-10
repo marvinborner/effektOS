@@ -43,12 +43,9 @@ REQUEST static volatile struct limine_stack_size_request stack_size_request = {
 
 #include "../baremetal/heap.c"
 #include "../baremetal/memory.c"
-#include "../flanterm/src/flanterm.c"
-#include "../flanterm/src/flanterm_backends/fb.c"
 
 #include "types.c"
 #include "bytearray.c"
-#include "../baremetal/framebuffer.c"
 #include "panic.c"
 
 #include "../baremetal/x86/interrupts.c"
@@ -59,10 +56,8 @@ void kmain(void);
 void kmain(void)
 {
 	memory_init();
-	fb_init();
 
 	effektMain();
-	fb_print("Effekt returned?!");
 	while (1)
 		__asm__ volatile("hlt");
 }

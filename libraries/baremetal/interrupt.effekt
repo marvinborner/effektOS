@@ -103,7 +103,7 @@ def dispatch { prog: => Nothing / Request }: Nothing / {
   }
 }
 
-def handle[I, St] { handle: => Unit / { State[St], Input } } { prog: => Nothing / Interrupt[I] }: Nothing / { State[St], Input } =
+def handler[I, St] { handle: => Unit / { State[St], Input } } { prog: => Nothing / Interrupt[I] }: Nothing / { State[St], Input } =
   try { prog() } with Interrupt[I] { def interrupt(interrupt: I) = resume(handle()) }
 
 def ignore[I] { prog: => Nothing / Interrupt[I] }: Nothing =
@@ -118,7 +118,7 @@ def panicOn[I, T] { prog: => T / Interrupt[I] }: T =
 record on[I]()
 
 def handle[I, St](proxy: on[I]) { handle: => Unit / { State[St], Input } } { prog: => Nothing / Interrupt[I] }: Nothing / { State[St], Input } =
-  handle[I, St] {handle} {prog}
+  handler[I, St] {handle} {prog}
 
 def ignore[I](proxy: on[I]) { prog: => Nothing / Interrupt[I] }: Nothing =
   ignore[I] {prog}

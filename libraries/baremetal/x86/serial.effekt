@@ -19,3 +19,12 @@ def init() = {
 	// Activate
 	outb(PORT + 4, 0x0F)
 }
+
+def print(text: String): Unit = {
+	def go(i: Int): Unit =
+		if (i < text.length) { putChar(text.unsafeCharAt(i)); go(i + 1) }
+		else ()
+	go(0)
+}
+
+def println(text: String): Unit = { print(text); putChar('\n') }

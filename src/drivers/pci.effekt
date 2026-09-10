@@ -1,0 +1,56 @@
+module drivers/pci
+
+import bits
+import x86/commands
+
+// legacy ports
+val CONFIG_ADDRESS = 3320
+val CONFIG_DATA = 3324
+
+record Device(bus: Int, slot: Int, function: Int)
+
+// 32bit boundary, enabled
+def address(dev: Device, offset: Int): Int = {
+  val Device(bus, slot, function) = dev
+  bitwiseOr(
+    bitwiseOr(
+      bitwiseOr(bitwiseShl(bus, 16), bitwiseShl(slot, 11)),
+      bitwiseShl(function, 8)),
+    bitwiseOr(bitwiseAnd(offset, 252), 1.bitwiseShl(31)))
+}
+
+def read32(dev: Device, offset: Int): Int = {
+  outl(CONFIG_ADDRESS, dev.address(offset))
+  inl(CONFIG_DATA)
+}
+
+def write32(dev: Device, offset: Int, data: Int): Unit = {
+  outl(CONFIG_ADDRESS, dev.address(offset))
+  outl(CONFIG_DATA, data)
+}
+
+def read16(dev: Device, offset: Int): Int = {
+  val word = dev.read32(offset)
+  bitwiseAnd(bitwiseShr(word, bitwiseShl(bitwiseAnd(offset, 2), 3)), 65535)
+}
+
+def vendor(dev: Device): Int = dev.read16(0)
+def device(dev: Device): Int = dev.read16(2)
+
+/// `n` in [0..5]
+/// (only 32bit memory BARs)
+def bar(dev: Device, n: Int): Int =
+  bitwiseAnd(dev.read32(16 + 4 * n), -16) // ~0xF
+
+def find(vendorId: Int, deviceId: Int): Option[Device] = {
+  def go(bus: Int, slot: Int, function: Int): Option[Device] =
+    if (bus >= 256) None()
+    else if (slot >= 32) go(bus + 1, 0, 0)
+    else if (function >= 8) go(bus, slot + 1, 0)
+    else {
+      val dev = Device(bus, slot, function)
+      if (dev.vendor == vendorId && dev.device == deviceId) Some(dev)
+      else go(bus, slot, function + 1)
+    }
+  go(0, 0, 0)
+}

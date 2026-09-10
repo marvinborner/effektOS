@@ -55,3 +55,19 @@ extern def inw(port: Short) at io: Short =
 
 def outb(port: Byte, data: Byte) at io: Unit = outb(port.toShort, data)
 def inb(port: Byte) at io: Byte = inb(port.toShort)
+
+extern def outl(port: Short, data: Int) at io: Unit =
+  llvm """
+    %port16 = trunc i64 ${port} to i16
+    %data32 = trunc i64 ${data} to i32
+    call void asm sideeffect "outl $1, $0", "{dx}N,{eax},~{flags}"(i16 %port16, i32 %data32)
+    ret %Pos zeroinitializer
+  """
+
+extern def inl(port: Short) at io: Int =
+  llvm """
+    %port16 = trunc i64 ${port} to i16
+    %res = call i32 asm sideeffect "inl $1, $0", "={eax},{dx}N,~{flags}"(i16 %port16)
+    %ext = zext i32 %res to i64
+    ret %Int %ext
+  """

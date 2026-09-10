@@ -1,5 +1,4 @@
 import interrupt
-import framebuffer
 import x86/pic
 import x86/commands
 

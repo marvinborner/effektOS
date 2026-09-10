@@ -3,7 +3,7 @@ interface State[St] {
   def setState(s: St): Unit
 }
 
-def statefully[St](r: Ref[St]) { prog: => Nothing / State[St] }: Nothing =
+def state[St](r: Ref[St]) { prog: => Nothing / State[St] }: Nothing =
   try prog()
   with State[St] {
     def getState() = resume(r.get())
@@ -34,6 +34,8 @@ type FramebufferState {
   BGAFramebufferState(pitch: Int, depth: Int, width: Int, height: Int, fb: C::Ptr)
 }
 
+effect Global = { State[KeyboardState], State[MouseState], State[TimerState], State[FramebufferState] }
+
 // --- input events
 
 type KeyboardEvent { Press(ch: Char) }
@@ -48,5 +50,5 @@ effect Input = { keyboard, mouse, tick }
 
 type FramebufferEvent { Redraw(buffer: ByteArray) }
 
-effect framebuffer(): FramebufferEvent
-effect Output = { emit[Char] }
+effect framebuffer(ev: FramebufferEvent): Unit
+effect Output = { emit[Char], framebuffer }

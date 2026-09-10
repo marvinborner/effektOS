@@ -7,3 +7,10 @@ def init() = {
   // TODO: only if BGA is detected
   bga::init()
 }
+
+// TODO: better effect subtraction
+def handler { prog: => Nothing / Output }: Nothing / { emit[Char], Global } = {
+  // TODO: only if BGA is detected
+  with bga::handler
+  prog()
+}

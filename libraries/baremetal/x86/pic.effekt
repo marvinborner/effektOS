@@ -1,5 +1,4 @@
 import x86/commands
-import framebuffer
 import bits
 
 val PIC1 = 0x20

@@ -1,7 +1,6 @@
 import scanner
 
 import utils
-import framebuffer
 import drivers
 
 type Expr {

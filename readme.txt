@@ -9,9 +9,11 @@
 == What? ==
 
 - x86-64 research operating system in the Effekt research language
+- no performance, only effects
 - written by hand in my freetime :)
 
 == Experimentation ==
 
 1. Install dependencies (xorriso, qemu, etc.)
-2. Run `make qemu-disk`
+2. Compile and install Effekt with `effekt_baremetal.patch`
+3. Run `make qemu-disk`

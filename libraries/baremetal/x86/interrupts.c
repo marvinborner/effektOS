@@ -8,9 +8,9 @@
 #define INT_USER 0x60
 
 struct int_frame {
-    uint64_t r15, r14, r13, r12, r11, r10, r9, r8;
-    uint64_t rbp, rdi, rsi, rdx, rcx, rbx, rax;
-    uint64_t int_no, err_code, rip, cs, rflags, rsp, ss;
+	uint64_t r15, r14, r13, r12, r11, r10, r9, r8;
+	uint64_t rbp, rdi, rsi, rdx, rcx, rbx, rax;
+	uint64_t int_no, err_code, rip, cs, rflags, rsp, ss;
 } PACKED;
 
 struct idt_entry {
@@ -50,11 +50,13 @@ extern void *int_table[];
 static struct Neg effekt_interrupt_handler = { 0 };
 static struct Neg effekt_exception_handler = { 0 };
 
-void c_install_interrupt_handler(const struct Neg callback) {
+void c_install_interrupt_handler(const struct Neg callback)
+{
 	effekt_interrupt_handler = callback;
 }
 
-void c_install_exception_handler(const struct Neg callback) {
+void c_install_exception_handler(const struct Neg callback)
+{
 	effekt_exception_handler = callback;
 }
 
@@ -82,7 +84,7 @@ void exception_handler(struct int_frame *);
 void exception_handler(struct int_frame *frame)
 {
 	run_Int(effekt_exception_handler, frame->int_no);
-	fb_print("UNHANDLED FAULT");
+	/* fb_print("UNHANDLED FAULT"); */
 	hcf();
 }
 

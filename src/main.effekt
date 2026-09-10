@@ -2,7 +2,6 @@ import x86/pic
 import x86/serial
 import x86/commands
 import x86/interrupts
-import framebuffer
 import interrupt
 
 import panic
@@ -42,31 +41,21 @@ ${fault.pretty}
 """)
 }
 
-def output { os: => Nothing / Output }: Nothing = {
-  with emit[Char, Nothing] { ch => framebuffer::print(ch.show) }
-  // with redraw
-  os()
+def output { outputs: => Nothing / Output }: Nothing / Global = {
+  with emit[Char, Nothing] { ch => () }
+  with graphics::handler
+  outputs()
 }
 
-def os { inputs: => Nothing / Input }: Nothing / Output = {
+def os { inputs: => Nothing / Input }: Nothing / { Output, Global } = {
   with looping
 
   calculator::program() {inputs}
 }
 
-def input { requests: => Nothing / Request }: Nothing / Input = {
-  with statefully[KeyboardState](empty().ref)
-  with statefully[MouseState](empty().ref)
-  with statefully[TimerState](empty().ref)
-  with statefully[FramebufferState](empty().ref)
-
-  timer::init()
-  keyboard::init()
-  mouse::init()
-  graphics::init()
-
-  with interrupt::on[TimerTick].handle[TimerTick, TimerState] { timer::handler }
-  with interrupt::on[PS2Keyboard].handle[PS2Keyboard, KeyboardState] { keyboard::handler }
+def input { requests: => Nothing / Request }: Nothing / { Input, Global } = {
+  with interrupt::handler[TimerTick, TimerState] { timer::handler }
+  with interrupt::handler[PS2Keyboard, KeyboardState] { keyboard::handler }
   with interrupt::on[Cascade].ignore
   with interrupt::on[COM2].ignore
   with interrupt::on[COM1].ignore
@@ -77,7 +66,7 @@ def input { requests: => Nothing / Request }: Nothing / Input = {
   with interrupt::on[Peripheral1].ignore
   with interrupt::on[Peripheral2].ignore
   with interrupt::on[Peripheral3].ignore
-  with interrupt::on[PS2Mouse].handle[PS2Mouse, MouseState] { mouse::handler }
+  with interrupt::handler[PS2Mouse, MouseState] { mouse::handler }
   with interrupt::on[FPU].ignore
   with interrupt::on[PrimaryATA].ignore
   with interrupt::on[SecondaryATA].ignore
@@ -87,13 +76,22 @@ def input { requests: => Nothing / Request }: Nothing / Input = {
 
 def loop(): Nothing = {
   serial::init()
-  // header()
+
+  with state[KeyboardState](empty().ref)
+  with state[MouseState](empty().ref)
+  with state[TimerState](empty().ref)
+  with state[FramebufferState](empty().ref)
 
   // interrupts
   val inbox = interrupts::init(box fault)
   pic::init()
 
   // capabilities
+  timer::init()
+  keyboard::init()
+  mouse::init()
+  graphics::init()
+
   with output
   with os
   with input
