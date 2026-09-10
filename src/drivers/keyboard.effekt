@@ -1,2 +1,14 @@
-record KeyboardState(shift: Bool)
-def empty() = KeyboardState(false)
+import drivers
+import drivers/ps2/keyboard
+
+def empty() = NoKeyboardState()
+
+def init() = {
+  // TODO: only if PS/2 keyboard is connected
+  ps2::keyboard::init()
+}
+
+def handler(): Unit / { State[KeyboardState], Input } = {
+  // TODO: only if PS/2 keyboard is connected
+  ps2::keyboard::handler()
+}

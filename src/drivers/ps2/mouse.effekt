@@ -1,13 +1,16 @@
+module ps2/mouse
+
 import bits
 import panic
 import x86/commands
 
 import drivers
 import drivers/ps2
-import drivers/mouse
+
+def empty() = PS2MouseBytes(0x00, 0x00, 0x00, 0x00)
 
 def init() = {
-  with noTimeout
+  do setState(PS2MouseState(0, empty()))
 
   // disable PS2
   command(0xAD)
@@ -63,16 +66,16 @@ def init() = {
 
 def handler(): Unit / { State[MouseState], Input } = {
   def step(byte: Byte): Unit = {
-    val MouseState(cycle, bytes) = do getState()
+    val PS2MouseState(cycle, bytes) = do getState() else panic("invalid mouse state")
     cycle match {
       case 0 =>
         // (bit 3 should always be set)
         if (byte.set?(3))
-          do setState(MouseState(1, MouseBytes(byte, 0x00, 0x00, 0x00)))
+          do setState(PS2MouseState(1, PS2MouseBytes(byte, 0x00, 0x00, 0x00)))
       case 1 =>
-        do setState(MouseState(2, MouseBytes(bytes.clicked, byte, 0x00, 0x00)))
+        do setState(PS2MouseState(2, PS2MouseBytes(bytes.clicked, byte, 0x00, 0x00)))
       case _ => {
-        do setState(MouseState(0, empty()))
+        do setState(PS2MouseState(0, empty()))
         do mouse(Move(bytes.x, byte))
         do mouse(Click(
           bytes.clicked.set?(0), // left

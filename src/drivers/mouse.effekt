@@ -1,5 +1,15 @@
-record MouseBytes(clicked: Byte, x: Byte, y: Byte, scroll: Byte)
-def empty() = MouseBytes(0x00, 0x00, 0x00, 0x00)
+import drivers
+import drivers/ps2
+import drivers/ps2/mouse
 
-record MouseState(cycle: Int, bytes: MouseBytes)
-def empty() = MouseState(0, empty())
+def empty() = NoMouseState()
+
+def init() = {
+  // TODO: only if PS/2 mouse is connected
+  noTimeout { ps2::mouse::init() }
+}
+
+def handler(): Unit / { State[MouseState], Input } = {
+  // TODO: only if PS/2 mouse is connected
+  ps2::mouse::handler()
+}

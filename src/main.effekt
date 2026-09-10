@@ -10,9 +10,7 @@ import panic
 
 import drivers
 import drivers/keyboard
-import drivers/ps2/keyboard
 import drivers/mouse
-import drivers/ps2/mouse
 
 import calculator
 import debug
@@ -86,5 +84,6 @@ def loop(): Nothing = {
 
 def main() = {
   loop()
+  panic("loop returned?!")
   ()
 }

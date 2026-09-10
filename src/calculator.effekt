@@ -14,16 +14,14 @@ type Expr {
 def handle { drivers: => Unit / Input } { prog: => Unit / next[Char] }: Unit =
   with source[Char] {
     try drivers()
-    with Input {
-      def keyboard(ev) = ev match {
-        case Press(ch) => resume(do emit(ch))
-      }
-      def mouse(ev) = ev match {
-        case Click(left, middle, right) =>
-          resume(println(s"[${left.show},${middle.show},${right.show}]\n"))
-        case Move(x, y) =>
-          resume(println(s"[${x.toInt.show},${y.toInt.show}]\n"))
-      }
+    with keyboard {
+      case Press(ch) => resume(do emit(ch))
+    }
+    with mouse {
+      case Click(left, middle, right) =>
+        resume(println(s"[${left.show},${middle.show},${right.show}]\n"))
+      case Move(x, y) =>
+        resume(println(s"[${x.toInt.show},${y.toInt.show}]\n"))
     }
   }
   prog()

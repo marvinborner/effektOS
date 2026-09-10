@@ -1,3 +1,5 @@
+module ps2/keyboard
+
 import bits
 import map
 import x86/commands
@@ -5,7 +7,10 @@ import framebuffer
 
 import drivers
 import drivers/ps2
-import drivers/keyboard
+
+def init() = {
+  do setState(PS2KeyboardState(false))
+}
 
 def handler(): Unit / { State[KeyboardState], Input } = {
   val keymap = map::fromList([
