@@ -6,6 +6,24 @@ extern def halt() at io: Unit =
     ret %Pos zeroinitializer
   """
 
+extern def cli() at io: Unit =
+  llvm """
+    call void asm sideeffect "cli", "~{memory},~{dirflag},~{fpsr},~{flags}"()
+    ret %Pos zeroinitializer
+  """
+
+extern def sti() at io: Unit =
+  llvm """
+    call void asm sideeffect "sti", "~{memory},~{dirflag},~{fpsr},~{flags}"()
+    ret %Pos zeroinitializer
+  """
+
+def atomically[R] { prog: => R } = {
+  cli()
+  prog()
+  sti()
+}
+
 extern def outb(port: Short, data: Byte) at io: Unit =
   llvm """
     %port16 = trunc i64 ${port} to i16

@@ -51,8 +51,12 @@ def init(exception: Fault => Nothing at {io, global}): Ref[List[Int]] = {
 def idle(inbox: Ref[List[Int]]) at {io, global}: Nothing / Request = {
   halt() // until interrupt
 
-  val interrupts = inbox.get.reverse
+  cli()
+  val pending = inbox.get
   inbox.set(Nil())
+  sti()
+
+  val interrupts = pending.reverse
 
   if (interrupts.nonEmpty) {
     interrupts.foreach { int =>

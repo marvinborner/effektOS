@@ -92,45 +92,64 @@ void memory_init(void)
 	}
 
 	kheap = largest_memory_area;
-	// uheap = kmalloc(sizeof(*uheap));
-	// memset(uheap, 0, sizeof(*uheap));
+	uheap = kmalloc(sizeof(*uheap));
+	memset(uheap, 0, sizeof(*uheap));
 
-	// void *region = kmalloc(HEAP_INIT_SIZE);
-	// memset(region, 0, HEAP_INIT_SIZE);
+	for (int i = 0; i < BIN_COUNT; i++) {
+		uheap->bins[i] = kmalloc(sizeof(bin_t));
+		memset(uheap->bins[i], 0, sizeof(bin_t));
+	}
 
-	// for (int i = 0; i < BIN_COUNT; i++) {
-	// 	uheap->bins[i] = kmalloc(sizeof(bin_t));
-	// 	memset(uheap->bins[i], 0, sizeof(bin_t));
-	// }
+	void *region = kmalloc(HEAP_INIT_SIZE);
+	memset(region, 0, HEAP_INIT_SIZE);
 
-	// heap_init(uheap, (long)region);
+	heap_init(uheap, (long)region);
+}
+
+// interrupts *always* allocate, so we have to disable them
+static inline unsigned long enter_allocator(void)
+{
+	unsigned long flags;
+
+	__asm__ volatile("pushfq\n\tpop %0\n\tcli" : "=r"(flags) : : "memory");
+	return flags;
+}
+
+static inline void leave_allocator(unsigned long flags)
+{
+	__asm__ volatile("push %0\n\tpopfq" : : "rm"(flags) : "memory", "cc");
 }
 
 void *malloc(size_t size)
 {
-	return kmalloc(size);
-	// return heap_alloc(uheap, size);
+	unsigned long flags = enter_allocator();
+	void *p = heap_alloc(uheap, size);
+	leave_allocator(flags);
+	return p;
 }
 
 void *realloc(void *p, size_t size)
 {
-	// return heap_realloc(uheap, p, size);
-	void *new = kmalloc(size);
-	memcpy(new, p, size);
-	return new;
+	unsigned long flags = enter_allocator();
+	void *n = heap_realloc(uheap, p, size);
+	leave_allocator(flags);
+	return n;
 }
 
 void *calloc(size_t n, size_t size)
 {
 	// TODO: handle integer overflow (return 0)
-	// void *p = heap_alloc(uheap, n * size);
-	void *p = malloc(n * size);
+	unsigned long flags = enter_allocator();
+	void *p = heap_alloc(uheap, n * size);
+	leave_allocator(flags);
+
 	memset(p, 0, n * size);
 	return p;
 }
 
 void free(void *ptr)
 {
-	return;
-	// heap_free(uheap, ptr);
+	unsigned long flags = enter_allocator();
+	heap_free(uheap, ptr);
+	leave_allocator(flags);
 }
