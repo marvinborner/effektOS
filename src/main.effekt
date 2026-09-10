@@ -9,8 +9,9 @@ import interrupt
 import panic
 
 import drivers
-import drivers/keyboard
-import drivers/mouse
+import capabilities/graphics
+import capabilities/keyboard
+import capabilities/mouse
 
 import calculator
 import debug
@@ -55,11 +56,17 @@ def loop(): Nothing = {
   serial::init()
   header()
 
+  // interrupts
   val inbox = interrupts::init(box fault)
   pic::init()
   pit::init(1000)
-  mouse::init()
 
+  // capabilities
+  keyboard::init()
+  mouse::init()
+  graphics::init()
+
+  // handlers
   with os
   with interrupt::on[TimerTick].ignore
   with interrupt::on[PS2Keyboard].handle[PS2Keyboard, KeyboardState] { keyboard::handler }
