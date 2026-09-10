@@ -1,6 +1,11 @@
 #ifndef EFFEKT_FB_C
 #define EFFEKT_FB_C
 
+void *fb_address(void)
+{
+	framebuffer_request.response->framebuffers[0]->address;
+}
+
 void fb_init(void)
 {
 	struct limine_framebuffer *fb =

@@ -9,6 +9,7 @@
 == What? ==
 
 - x86-64 research operating system in the Effekt research language
+- written by hand in my freetime :)
 
 == Experimentation ==
 

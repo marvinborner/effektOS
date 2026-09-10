@@ -24,6 +24,16 @@ type KeyboardState {
   PS2KeyboardState(shift: Bool);
 }
 
+type TimerState {
+  NoTimerState();
+  PITimerState(ticks: Int);
+}
+
+type FramebufferState {
+  NoFramebufferState();
+  BGAFramebufferState(pitch: Int, depth: Int, width: Int, height: Int, fb: C::Ptr)
+}
+
 // --- input events
 
 type KeyboardEvent { Press(ch: Char) }
@@ -31,8 +41,12 @@ type MouseEvent { Move(x: Byte, y: Byte); Click(left: Bool, middle: Bool, right:
 
 effect keyboard(ev: KeyboardEvent): Unit
 effect mouse(ev: MouseEvent): Unit
-effect Input = { keyboard, mouse }
+effect tick(): Unit
+effect Input = { keyboard, mouse, tick }
 
 // --- output events
 
+type FramebufferEvent { Redraw(buffer: ByteArray) }
+
+effect framebuffer(): FramebufferEvent
 effect Output = { emit[Char] }

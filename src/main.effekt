@@ -1,5 +1,4 @@
 import x86/pic
-import x86/pit
 import x86/serial
 import x86/commands
 import x86/interrupts
@@ -9,17 +8,19 @@ import interrupt
 import panic
 
 import drivers
+import capabilities/timer
 import capabilities/graphics
 import capabilities/keyboard
 import capabilities/mouse
 
+import graphics/framebuffer
+
 import calculator
-import debug
 import utils
 
 import scanner
 
-def header(): Unit / Debug = {
+def header(): Unit / Output = {
   val logo = """
   _____     ______  __  __     _    _    ____   _____
  (_____)   |  ____|/ _|/ _|   | |  | |  / __ \ / ____|
@@ -28,7 +29,7 @@ def header(): Unit / Debug = {
   _____    | |____| | | ||  __/   <| |_| |__| |____) |
  (_____)   |______|_| |_| \___|_|\_\\__|\____/|_____/
 """
-  do println(logo)
+  logo.each
 }
 
 def fault(fault: Fault) = {
@@ -41,34 +42,30 @@ ${fault.pretty}
 """)
 }
 
-def os { drivers: => Unit / Input }: Nothing = {
-  with looping
-  with emit[Char] { ch => framebuffer::print(ch.show) }
-
-  calculator::program() {drivers}
+def output { os: => Nothing / Output }: Nothing = {
+  with emit[Char, Nothing] { ch => framebuffer::print(ch.show) }
+  // with redraw
+  os()
 }
 
-def loop(): Nothing = {
-  with debug
+def os { inputs: => Nothing / Input }: Nothing / Output = {
+  with looping
+
+  calculator::program() {inputs}
+}
+
+def input { requests: => Nothing / Request }: Nothing / Input = {
   with statefully[KeyboardState](empty().ref)
   with statefully[MouseState](empty().ref)
+  with statefully[TimerState](empty().ref)
+  with statefully[FramebufferState](empty().ref)
 
-  serial::init()
-  header()
-
-  // interrupts
-  val inbox = interrupts::init(box fault)
-  pic::init()
-  pit::init(1000)
-
-  // capabilities
+  timer::init()
   keyboard::init()
   mouse::init()
   graphics::init()
 
-  // handlers
-  with os
-  with interrupt::on[TimerTick].ignore
+  with interrupt::on[TimerTick].handle[TimerTick, TimerState] { timer::handler }
   with interrupt::on[PS2Keyboard].handle[PS2Keyboard, KeyboardState] { keyboard::handler }
   with interrupt::on[Cascade].ignore
   with interrupt::on[COM2].ignore
@@ -85,8 +82,22 @@ def loop(): Nothing = {
   with interrupt::on[PrimaryATA].ignore
   with interrupt::on[SecondaryATA].ignore
   with dispatch
+  requests()
+}
+
+def loop(): Nothing = {
+  serial::init()
+  // header()
+
+  // interrupts
+  val inbox = interrupts::init(box fault)
+  pic::init()
+
+  // capabilities
+  with output
+  with os
+  with input
   interrupts::idle(inbox)
-  ()
 }
 
 def main() = {

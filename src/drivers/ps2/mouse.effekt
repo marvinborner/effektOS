@@ -64,9 +64,10 @@ def init() = {
   config(conf)
 }
 
-def handler(): Unit / { State[MouseState], Input } = {
+def handler(): Unit / { State[MouseState], mouse } = {
   def step(byte: Byte): Unit = {
-    val PS2MouseState(cycle, bytes) = do getState() else panic("invalid mouse state")
+    val PS2MouseState(cycle, bytes) = do getState()
+      else panic("invalid mouse state")
     cycle match {
       case 0 =>
         // (bit 3 should always be set)

@@ -27,7 +27,15 @@ def atomically[R] { prog: => R } = {
 extern def outb(port: Short, data: Byte) at io: Unit =
   llvm """
     %port16 = trunc i64 ${port} to i16
-    call void asm sideeffect "outb  $1, $0", "{dx}N,{ax},~{flags}"(i16 %port16, i8 ${data})
+    call void asm sideeffect "outb $1, $0", "{dx}N,{ax},~{flags}"(i16 %port16, i8 ${data})
+    ret %Pos zeroinitializer
+  """
+
+extern def outw(port: Short, data: Short) at io: Unit =
+  llvm """
+    %port16 = trunc i64 ${port} to i16
+    %data16 = trunc i64 ${data} to i16
+    call void asm sideeffect "outw $1, $0", "{dx}N,{ax},~{flags}"(i16 %port16, i16 %data16)
     ret %Pos zeroinitializer
   """
 
@@ -36,6 +44,13 @@ extern def inb(port: Short) at io: Byte =
     %port16 = trunc i64 ${port} to i16
     %res = call i8 asm sideeffect "inb $1, $0", "={ax},{dx}N,~{flags}"(i16 %port16)
     ret i8 %res
+  """
+
+extern def inw(port: Short) at io: Short =
+  llvm """
+    %port16 = trunc i64 ${port} to i16
+    %res = call i16 asm sideeffect "inw $1, $0", "={ax},{dx}N,~{flags}"(i16 %port16)
+    ret i16 %res
   """
 
 def outb(port: Byte, data: Byte) at io: Unit = outb(port.toShort, data)

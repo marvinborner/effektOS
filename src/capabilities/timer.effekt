@@ -1,0 +1,15 @@
+import drivers
+import drivers/pit
+
+def empty() = NoTimerState()
+
+def init() = {
+  pit::init(1000)
+}
+
+def handler(): Unit / { State[TimerState], Input } = {
+  val PITimerState(ticks) = do getState()
+    else panic("invalid timer state")
+  do setState(PITimerState(ticks + 1))
+  do tick()
+}

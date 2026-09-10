@@ -1,0 +1,9 @@
+import drivers
+import drivers/bga
+
+def empty() = NoFramebufferState()
+
+def init() = {
+  // TODO: only if BGA is detected
+  bga::init()
+}

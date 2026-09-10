@@ -1,0 +1,56 @@
+module framebuffer/bga
+
+import bits
+import drivers
+import x86/commands
+
+val ADDRESS = 462
+val DATA = 463
+
+val VERSION = 0
+val XRES = 1
+val YRES = 2
+val BPP = 3
+val ENABLE = 4
+val BANK = 5
+val VWIDTH = 6
+val VHEIGHT = 7
+val XOFF = 8
+val YOFF = 9
+
+val LINEAR_FB = 0x40.toInt
+
+def writeRegister(address: Short, data: Short) = {
+  outw(ADDRESS, address)
+  outw(DATA, data)
+}
+
+def readRegister(address: Short) = {
+  outw(ADDRESS, address)
+  return inw(DATA)
+}
+
+extern def framebuffer() at io: C::Ptr = c "fb_address"
+
+def enable(width: Short, height: Short, depth: Short) = {
+  writeRegister(ENABLE, 0)
+  writeRegister(XRES, width)
+  writeRegister(YRES, height)
+  writeRegister(BPP, depth)
+  writeRegister(ENABLE, 1.bitwiseOr(LINEAR_FB))
+
+  val pitch = width * depth.bitwiseShr(3)
+  val fb = framebuffer()
+  do setState(BGAFramebufferState(pitch, depth, width, height, fb))
+}
+
+def init() = {
+  enable(1920, 1200, 32)
+}
+
+// def handler(): Unit / { State[FramebufferState], framebuffer } = {
+//   val BGAFramebufferState(pitch, depth, width, height, fb) = do getState()
+//     else panic("invalid framebuffer state")
+//   val FramebufferEvent(dirty, fb) = do framebuffer()
+
+// }

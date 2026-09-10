@@ -58,7 +58,6 @@ extern void effektMain(void);
 void kmain(void);
 void kmain(void)
 {
-	// gdt_init();
 	memory_init();
 	fb_init();
 
