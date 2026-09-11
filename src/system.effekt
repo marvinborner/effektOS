@@ -1,12 +1,12 @@
 import drivers
 import capabilities/graphics
 
-interface Syscall {
+interface System {
   def gpuContext(): GPUContext
 }
 
-def syscalls { prog: => Nothing / { Output, Syscall } }: Nothing / { Output, Global } =
+def system { prog: => Nothing / { Output, System } }: Nothing / { Output, Global } =
   try prog()
-  with Syscall {
+  with System {
     def gpuContext() = resume(graphics::context())
   }

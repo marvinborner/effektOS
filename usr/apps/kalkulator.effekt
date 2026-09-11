@@ -1,0 +1,13 @@
+import system
+import ui/vector
+import ui/pixel
+import windows/manager
+
+def start(): Unit / { System, WindowManager } = {
+  val window = do create(Vector(180.0, 140.0), colors::red)
+
+  ()
+  // window.addEventListener(Click()) {
+  //   case Vector(x, y) => <>
+  // }
+}

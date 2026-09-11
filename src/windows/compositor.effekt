@@ -1,9 +1,9 @@
-import windows/geometry
-import windows/vector
-import windows/pixel
-import windows/rect
-import syscalls
+import ui/geometry
+import ui/vector
+import ui/pixel
+import ui/rect
 import drivers
+import system
 
 import set
 import map
@@ -30,7 +30,7 @@ namespace cursor {
 
 val wallpaper = colors::slate
 
-def compositor { wm: => Nothing / Compositor }: Nothing / { Output, Syscall } = {
+def compositor { wm: => Nothing / Compositor }: Nothing / { Output, System } = {
   var counter = 0
   val dirty = set::empty[ContextId](box compareInt).ref
   val composited = map::empty[ContextId, Composited](box compareInt).ref

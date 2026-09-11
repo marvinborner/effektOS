@@ -6,12 +6,12 @@ import interrupt
 
 import panic
 
-import drivers
-import syscalls
 import capabilities/timer
 import capabilities/graphics
 import capabilities/keyboard
 import capabilities/mouse
+import drivers
+import system
 
 import windows
 import utils
@@ -31,7 +31,7 @@ def output { outputs: => Nothing / Output }: Nothing / Global =
   outputs()
 
 def os { inputs: => Nothing / Input }: Nothing / { Output, Global } =
-  with syscalls // hides global state!
+  with system // hides global state!
   windows::start() { inputs }
 
 def input { requests: => Nothing / Request }: Nothing / { Input, Global } = {

@@ -2,9 +2,9 @@
 // efficiency is attempted by not using Vector or Color but integers
 
 import utils
-import windows/rect
-import windows/pixel
-import windows/vector
+import ui/rect
+import ui/pixel
+import ui/vector
 
 record Geometry(size: Vector, depth: Int, buffer: ByteArray)
 

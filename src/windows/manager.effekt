@@ -1,8 +1,8 @@
 import windows/compositor
-import windows/geometry
-import windows/vector
-import windows/pixel
-import windows/rect
+import ui/geometry
+import ui/vector
+import ui/pixel
+import ui/rect
 import drivers
 
 import map

@@ -1,4 +1,4 @@
-import windows/vector
+import ui/vector
 
 record Rect(origin: Vector, size: Vector)
 

@@ -1,12 +1,11 @@
-import capabilities/graphics
 import windows/compositor
-import windows/geometry
 import windows/manager
-import windows/vector
-import windows/pixel
-import windows/rect
-import syscalls
+import ui/vector
+import ui/pixel
 import drivers
+import system
+
+import apps/kalkulator
 
 def header(): Unit / emit[Char] = {
   val logo = """
@@ -20,13 +19,14 @@ def header(): Unit / emit[Char] = {
   logo.each
 }
 
-def start { inputs: => Nothing / Input }: Nothing / { Output, Syscall } = {
+def start { inputs: => Nothing / Input }: Nothing / { Output, System } = {
   with compositor
   with manager
 
-  val window1 = do create(Vector(180.0, 140.0), colors::red)
-  val window2 = do create(Vector(560.0, 330.0), colors::green)
-  val window3 = do create(Vector(760.0, 620.0), colors::magenta)
+  kalkulator::start()
+  // val window1 = do create(Vector(180.0, 140.0), colors::red)
+  // val window2 = do create(Vector(560.0, 330.0), colors::green)
+  // val window3 = do create(Vector(760.0, 620.0), colors::magenta)
 
   inputs()
 }
