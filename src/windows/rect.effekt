@@ -25,3 +25,7 @@ def cover(r1: Rect, r2: Rect): Rect =
     val corner = Vector(max(r1.right.toDouble, r2.right.toDouble), max(r1.bottom.toDouble, r2.bottom.toDouble))
     Rect(origin, corner - origin)
   }
+
+def contains?(r: Rect, v: Vector): Bool =
+  not(v.x < r.origin.x) && v.x < r.origin.x + r.size.x &&
+  not(v.y < r.origin.y) && v.y < r.origin.y + r.size.y

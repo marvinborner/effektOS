@@ -5,17 +5,25 @@ import windows/pixel
 import windows/rect
 import drivers
 
+import map
+
+val CASCADE = 48.0
+
 type WindowId = Int
 record Window(id: WindowId)
 record Managed(window: Window, position: Vector, size: Vector, contexts: List[Context])
 
-// moving, resizing, etc. is an INTERNAL operation (ie. handled directly by the `manager` function)
 interface WindowManager {
   def create(size: Vector, accent: Color): Window // no position!
-  def size(window: Window): Vector
-  def context(window: Window, position: Vector, size: Vector): Context
+  def size(window: Window): Option[Vector]
+  def context(window: Window, position: Vector, size: Vector): Option[Context]
   def destroy(window: Window): Unit
-  def at(position: Vector): Window
+  def at(position: Vector): Option[Window]
+}
+
+type Grab {
+  NoGrab();
+  Grabbing(window: WindowId, inside: Vector)
 }
 
 def panel(geometry: Geometry, accent: Color): Unit = {
@@ -34,39 +42,112 @@ def panel(geometry: Geometry, accent: Color): Unit = {
 def manager { windows: => Nothing / { WindowManager, Input } }: Nothing / Compositor = {
   var counter = 0
 
-  def window(at: Vector, size: Vector, accent: Color) = {
-    val Context(id, geometry) = do freshContext(at, size)
-    geometry.panel(accent)
-    do markDirty(id)
+  val screen = do resolution()
+
+  val managed = map::empty[WindowId, Managed](box compareInt).ref
+  val pointer = ((screen - cursor::size) / 2.0).ref
+  val grabbed = NoGrab().ref
+  val cascading = Vector(CASCADE, CASCADE).ref
+
+  def lookup(id: WindowId): Option[Managed] = managed.get.get(id)
+  def store(m: Managed): Unit = managed.map { ms => ms.put(m.window.id, m) }
+
+  def frame(at: Vector, size: Vector, accent: Color): Context = {
+    val context = do freshContext(at, size)
+    context.geometry.panel(accent)
+    do markDirty(context.id)
+    context
   }
-  
-  // TODO: figure out
+
+  def cascade(size: Vector): Vector = {
+    val limit = Vector(max(0.0, screen.x - size.x), max(0.0, screen.y - size.y))
+    val candidate = cascading.get
+    val at = if (candidate.x > limit.x || candidate.y > limit.y) Vector(CASCADE, CASCADE) else candidate
+    cascading.set(at + CASCADE)
+    clamp(at, limit)
+  }
+
+  def topmostAt(position: Vector): Option[Window] = {
+    var found: Option[Window] = None()
+    managed.get.foreachReversed { (_, m) =>
+      found = found.orElse {
+        if (Rect(m.position, m.size).contains?(position)) found = Some(m.window)
+        found
+      }
+    }
+    found
+  }
+
+  def move(m: Managed, to: Vector): Unit = {
+    val by = to - m.position
+    if (to == m.position) ()
+    else {
+      m.contexts.foreach { c => do compositor::move(c.id, by) }
+      store(Managed(m.window, to, m.size, m.contexts))
+    }
+  }
+
+  def drag(): Unit = grabbed.get match {
+    case NoGrab() => ()
+    case Grabbing(id, inside) => lookup(id) match {
+      case None() => grabbed.set(NoGrab())
+      case Some(m) => m.move(clamp(pointer.get - inside, screen - m.size))
+    }
+  }
+
+  def press(): Unit = grabbed.get match {
+    case Grabbing(_, _) => () // already dragging
+    case NoGrab() =>
+      with val window = topmostAt(pointer.get).foreach
+      with val m = lookup(window.id).foreach
+      grabbed.set(Grabbing(window.id, pointer.get - m.position))
+  }
 
   try windows()
   with WindowManager {
     def create(size, accent) = {
       counter = counter + 1
-      val at = Vector(180.0, 140.0) // TODO: find good location
-      // TODO: store in data structure
-      window(at, size, accent)
-      resume(Window(counter))
+      val window = Window(counter)
+      val at = cascade(size)
+      store(Managed(window, at, size, [frame(at, size, accent)]))
+      resume(window)
     }
 
-    def size(window) = <>
+    def size(window) = resume(lookup(window.id).map { m => m.size })
 
-    def context(window, position, size) = <>
+    def context(window, position, size) = resume(lookup(window.id).map { m =>
+      val context = do freshContext(m.position + position, size)
+      store(Managed(m.window, m.position, m.size, m.contexts.append([context])))
+      context
+    })
 
-    // TODO: at destroy, destroy all contexts of window as well
-    def destroy(window) = <>
+    def destroy(window) = {
+      val m = lookup(window.id).getOrElse { resume(()) }
+      m.contexts.foreach { c => do compositor::destroy(c.id) }
+      managed.map { ms => ms.map::delete(window.id) }
+      grabbed.get match {
+        case NoGrab() => ()
+        case Grabbing(id, _) => if (id == window.id) grabbed.set(NoGrab())
+      }
+      resume(())
+    }
 
-    def at(position) = <>
+    def at(position) = resume(topmostAt(position))
   }
   with keyboard {
     case Press(ch) => resume(())
   }
   with mouse {
-    case Click(left, middle, right) => resume(())
-    case Move(x, y) => resume(()) // TODO: move window
+    case Click(left, middle, right) => {
+      if (left) press() else grabbed.set(NoGrab())
+      resume(())
+    }
+    case Move(x, y) => {
+      pointer.set(clamp(pointer.get + Vector(x, 0.0 - y), screen - cursor::size))
+      do cursor(pointer.get)
+      drag()
+      resume(())
+    }
   }
   with tick { resume(do compositor::redrawDirty()) }
 }

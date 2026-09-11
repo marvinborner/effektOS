@@ -64,6 +64,11 @@ def init() = {
   config(conf)
 }
 
+def signed(byte: Byte): Double = {
+  val value = byte.toInt
+  if (value > 127) (value - 256).toDouble else value.toDouble
+}
+
 def handler(): Unit / { State[MouseState], mouse } = {
   def step(byte: Byte): Unit = {
     val PS2MouseState(cycle, bytes) = do getState()
@@ -77,7 +82,7 @@ def handler(): Unit / { State[MouseState], mouse } = {
         do setState(PS2MouseState(2, PS2MouseBytes(bytes.clicked, byte, 0x00, 0x00)))
       case _ => {
         do setState(PS2MouseState(0, empty()))
-        do mouse(Move(bytes.x, byte))
+        do mouse(Move(bytes.x.signed, byte.signed))
         do mouse(Click(
           bytes.clicked.set?(0), // left
           bytes.clicked.set?(2), // middle

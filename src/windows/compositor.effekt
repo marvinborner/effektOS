@@ -13,10 +13,19 @@ record Context(id: ContextId, geometry: Geometry)
 record Composited(position: Vector, context: Context)
 
 interface Compositor {
+  def resolution(): Vector
   def freshContext(at: Vector, size: Vector): Context
   def markDirty(id: ContextId): Unit
+  def move(id: ContextId, by: Vector): Unit
+  def cursor(at: Vector): Unit
   def redrawDirty(): Unit
   def destroy(id: ContextId): Unit
+}
+
+namespace cursor {
+  val size = Vector(16.0, 16.0)
+  val color = colors::white.fade(0.5)
+  def bounds(at: Vector) = Rect(at, size)
 }
 
 val wallpaper = colors::slate
@@ -25,6 +34,9 @@ def compositor { wm: => Nothing / Compositor }: Nothing / { Output, Syscall } = 
   var counter = 0
   val dirty = set::empty[ContextId](box compareInt).ref
   val composited = map::empty[ContextId, Composited](box compareInt).ref
+  val repaint = rect::empty.ref
+
+  val pointer = (Vector(0.0, 0.0) - cursor::size).ref
 
   val GPUContext(pitch, depth, width, height, gpuBuffer) = do gpuContext()
   val screen = Geometry(Vector(width.toDouble, height.toDouble), depth, gpuBuffer)
@@ -42,6 +54,7 @@ def compositor { wm: => Nothing / Compositor }: Nothing / { Output, Syscall } = 
     composited.get.foreach { (_, c) =>
       screen.overlay(c.context.geometry, c.position, area)
     }
+    screen.rectangle(cursor::bounds(pointer.get), cursor::color, area)
   }
 
   screen.fill(wallpaper)
@@ -49,6 +62,8 @@ def compositor { wm: => Nothing / Compositor }: Nothing / { Output, Syscall } = 
 
   try wm()
   with Compositor {
+    def resolution() = resume(screen.size)
+
     def freshContext(at, size) = {
       counter = counter + 1
       val context = Context(counter, geometry(size, depth))
@@ -58,8 +73,22 @@ def compositor { wm: => Nothing / Compositor }: Nothing / { Output, Syscall } = 
 
     def markDirty(id) = resume(dirty.map { d => d.set::insert(id) })
 
+    def move(id, by) = {
+      val Composited(position, context) = composited.get.get(id).getOrElse { resume(()) }
+      repaint.map { d => cover(d, context.geometry.bounds(position)) }
+      composited.map { c => c.put(id, Composited(position + by, context)) }
+      resume(dirty.map { d => d.set::insert(id) })
+    }
+
+    def cursor(at) = {
+      repaint.map { d => cover(d, cover(cursor::bounds(pointer.get), cursor::bounds(at))) }
+      pointer.set(at)
+      resume(())
+    }
+
     def redrawDirty() = {
-      var area = rect::empty
+      var area = repaint.get
+      repaint.set(rect::empty)
       dirty.get.foreach { id => area = cover(area, id.bounds) }
       if (area.empty?) resume(())
       else {
@@ -70,7 +99,8 @@ def compositor { wm: => Nothing / Compositor }: Nothing / { Output, Syscall } = 
     }
 
     def destroy(id) = {
-      val area = id.bounds
+      val area = cover(repaint.get, id.bounds)
+      repaint.set(rect::empty)
       composited.map { c => c.map::delete(id) }
       dirty.map { d => d.set::delete(id) }
       compose(area)

@@ -33,3 +33,6 @@ def angle(v1: Vector, v2: Vector) = {
   val b = v2.normalize
   signum((b.y * a.x) - (a.y * b.x)) * acos(max(-1.0, min(1.0, a.dot(b))))
 }
+
+def clamp(v: Vector, limit: Vector) =
+  Vector(max(0.0, min(limit.x, v.x)), max(0.0, min(limit.y, v.y)))

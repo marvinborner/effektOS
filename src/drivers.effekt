@@ -39,7 +39,7 @@ effect Global = { State[KeyboardState], State[MouseState], State[TimerState], St
 // --- input events ---
 
 type KeyboardEvent { Press(ch: Char) }
-type MouseEvent { Move(x: Byte, y: Byte); Click(left: Bool, middle: Bool, right: Bool) }
+type MouseEvent { Move(x: Double, y: Double); Click(left: Bool, middle: Bool, right: Bool) }
 
 effect keyboard(ev: KeyboardEvent): Unit
 effect mouse(ev: MouseEvent): Unit
