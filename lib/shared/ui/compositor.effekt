@@ -1,0 +1,16 @@
+import ui/vector
+import ui/geometry
+
+type ContextId = Int
+
+record Context(id: ContextId, geometry: Geometry)
+
+interface Compositor {
+  def resolution(): Vector
+  def freshContext(at: Vector, size: Vector): Context
+  def markDirty(id: ContextId): Unit / Exception[MissingValue]
+  def move(id: ContextId, by: Vector): Unit / Exception[MissingValue]
+  def cursor(at: Vector): Unit
+  def redrawDirty(): Unit
+  def destroy(id: ContextId): Unit / Exception[MissingValue]
+}

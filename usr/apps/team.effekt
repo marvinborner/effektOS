@@ -1,0 +1,28 @@
+import system
+import io/error
+import capabilities/filesystem // TODO: abstraction leak
+
+import ui/bmp
+import ui/pixel
+import ui/vector
+import ui/window
+import ui/geometry
+import ui/compositor
+
+val TEAM = "/res/group_jumping.bmp"
+val OFFSET = Vector(MARGIN * 2.0, (MARGIN * 2.0) + TITLEBAR)
+
+def start(): Unit / { System, WindowManager } = {
+  with on[IOError].ignore
+  with on[WrongFormat].ignore
+  with on[MissingValue].ignore
+
+  val image = do open(TEAM).contents.bmp::decode()
+  val size = image.size
+
+  val window = do create(size + OFFSET, colors::green)
+
+  val area = size.inBody(window)
+  area.geometry.bmp::render(image, Vector(0.0, 0.0))
+  do dirty(window, area)
+}

@@ -20,10 +20,10 @@ def bounds(g: Geometry) = g.bounds(Vector(0.0, 0.0))
 
 def offset(g: Geometry, x: Int, y: Int) = ((y * g.width) + x) * g.stride
 
-def get(g: Geometry, i: Int): Pixel = g.buffer.get64(i)
+def get(g: Geometry, i: Int): Pixel = g.buffer.bytes::get64(i)
 def get(g: Geometry, x: Int, y: Int): Pixel = g.get(g.offset(x, y))
 
-def set(g: Geometry, i: Int, p: Pixel): Unit = g.buffer.set64(i, p)
+def set(g: Geometry, i: Int, p: Pixel): Unit = g.buffer.bytes::set64(i, p)
 def set(g: Geometry, x: Int, y: Int, p: Pixel): Unit = g.set(g.offset(x, y), p)
 
 def draw(g: Geometry, i: Int, p: Pixel): Unit = {

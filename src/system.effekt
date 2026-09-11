@@ -1,12 +1,16 @@
 import drivers
+import io/error
+import capabilities/filesystem
 import capabilities/graphics
 
 interface System {
   def gpuContext(): GPUContext
+  def open(name: String): File / Exception[IOError]
 }
 
 def system { prog: => Nothing / { Output, System } }: Nothing / { Output, Global } =
   try prog()
   with System {
     def gpuContext() = resume(graphics::context())
+    def open(name) = resume { filesystem::find(name) }
   }

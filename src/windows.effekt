@@ -1,32 +1,20 @@
 import windows/compositor
 import windows/manager
-import ui/vector
-import ui/pixel
+import ui/window
 import drivers
 import system
 
-import apps/kalkulator
+// import apps/kalkulator
+import apps/team
 
-def header(): Unit / emit[Char] = {
-  val logo = """
-  _____     ______  __  __     _    _    ____   _____
- (_____)   |  ____|/ _|/ _|   | |  | |  / __ \ / ____|
-   ___     | |__  | |_| |_ ___| | _| |_| |  | | (___
-  (___)    |  __| |  _|  _/ _ \ |/ / __| |  | |\___ \
-  _____    | |____| | | ||  __/   <| |_| |__| |____) |
- (_____)   |______|_| |_| \___|_|\_\\__|\____/|_____/
-"""
-  logo.each
+def apps(): Unit / { System, WindowManager } = {
+  team::start()
 }
 
 def start { inputs: => Nothing / Input }: Nothing / { Output, System } = {
   with compositor
   with manager
 
-  kalkulator::start()
-  // val window1 = do create(Vector(180.0, 140.0), colors::red)
-  // val window2 = do create(Vector(560.0, 330.0), colors::green)
-  // val window3 = do create(Vector(760.0, 620.0), colors::magenta)
-
+  apps()
   inputs()
 }

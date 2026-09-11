@@ -1,5 +1,7 @@
 import windows/compositor
+import ui/compositor
 import ui/geometry
+import ui/window
 import ui/vector
 import ui/pixel
 import ui/rect
@@ -9,37 +11,16 @@ import map
 
 val CASCADE = 48.0
 
-type WindowId = Int
-record Window(id: WindowId)
 record Managed(window: Window, position: Vector, size: Vector, contexts: List[Context])
-
-interface WindowManager {
-  def create(size: Vector, accent: Color): Window // no position!
-  def size(window: Window): Option[Vector]
-  def context(window: Window, position: Vector, size: Vector): Option[Context]
-  def destroy(window: Window): Unit
-  def at(position: Vector): Option[Window]
-}
 
 type Grab {
   NoGrab();
   Grabbing(window: WindowId, inside: Vector)
 }
 
-def panel(geometry: Geometry, accent: Color): Unit = {
-  val margin = 16.0
-  val title = 40.0
-
-  val body = Rect(Vector(margin, margin), geometry.size - (margin * 2.0))
-  val bar = Rect(body.origin, Vector(body.size.x, title))
-  val button = Rect(body.origin + Vector(body.size.x - title, 0.0) + 10.0, Vector(title, title) - 20.0)
-
-  geometry.rectangle(body, accent.fade(0.6))
-  geometry.rectangle(bar, accent)
-  geometry.rectangle(button, colors::white)
-}
-
 def manager { windows: => Nothing / { WindowManager, Input } }: Nothing / Compositor = {
+  with on[MissingValue].panic()
+
   var counter = 0
 
   val screen = do resolution()
@@ -113,26 +94,33 @@ def manager { windows: => Nothing / { WindowManager, Input } }: Nothing / Compos
       resume(window)
     }
 
-    def size(window) = resume(lookup(window.id).map { m => m.size })
+    def size(window) = resume { lookup(window.id).value.size }
 
-    def context(window, position, size) = resume(lookup(window.id).map { m =>
+    def context(window, position, size) = resume {
+      val m = lookup(window.id).value
       val context = do freshContext(m.position + position, size)
       store(Managed(m.window, m.position, m.size, m.contexts.append([context])))
       context
-    })
+    }
 
-    def destroy(window) = {
-      val m = lookup(window.id).getOrElse { resume(()) }
+    def dirty(window, context) = resume {
+      val m = lookup(window.id).value
+      if (not(m.contexts.contains(context) { (a, b) => a.id == b.id }))
+        missingValue()
+      do markDirty(context.id)
+    }
+
+    def destroy(window) = resume {
+      val m = lookup(window.id).value
       m.contexts.foreach { c => do compositor::destroy(c.id) }
       managed.map { ms => ms.map::delete(window.id) }
       grabbed.get match {
         case NoGrab() => ()
         case Grabbing(id, _) => if (id == window.id) grabbed.set(NoGrab())
       }
-      resume(())
     }
 
-    def at(position) = resume(topmostAt(position))
+    def at(position) = resume { topmostAt(position).value }
   }
   with keyboard {
     case Press(ch) => resume(())

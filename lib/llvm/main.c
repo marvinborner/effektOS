@@ -11,19 +11,16 @@ __attribute__((noreturn)) void hcf(void)
 	}
 }
 
-// for testing
-void segfault(void)
-{
-	volatile int *p = (int *)0;
-	*p = 42;
-}
-
-static struct flanterm_context *ft_ctx = 0;
-
 #include "../limine.h"
 
 REQUEST static volatile struct limine_memmap_request memmap_request = {
 	.id = LIMINE_MEMMAP_REQUEST_ID,
+	.revision = 0,
+	.response = 0
+};
+
+REQUEST static volatile struct limine_module_request module_request = {
+	.id = LIMINE_MODULE_REQUEST_ID,
 	.revision = 0,
 	.response = 0
 };
@@ -42,6 +39,7 @@ REQUEST static volatile struct limine_stack_size_request stack_size_request = {
 #include "bytearray.c"
 #include "panic.c"
 
+#include "../baremetal/filesystem.c"
 #include "../baremetal/x86/interrupts.c"
 
 extern void enable_sse(void);

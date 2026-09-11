@@ -1,0 +1,63 @@
+import utils
+import ui/pixel
+import ui/vector
+import ui/geometry
+
+namespace header {
+  val MAGIC = 0 // "BM"
+  val DATA = 10
+  val WIDTH = 18
+  val HEIGHT = 22 // negative => flipped
+  val DEPTH = 28
+  val ENCODING = 30
+  val MINIMUM = 34
+}
+
+namespace encodings {
+  val RGB = 0
+  val BITFIELDS = 3
+}
+
+def decoded(data: ByteArray, start: Int, pitch: Int, width: Int, height: Int, depth: Int, flipped: Bool): Geometry = {
+  val image = geometry(Vector(width.toDouble, height.toDouble), 32)
+  val step = depth / 8
+
+  each(0, height) { y =>
+    var source = start + (if (flipped) height - 1 - y else y) * pitch
+    var target = image.offset(0, y)
+    each(0, width) { _ =>
+      image.set(target, pixel::pack(
+        data.bytes::get8(source + 2),
+        data.bytes::get8(source + 1),
+        data.bytes::get8(source),
+        255))
+      source = source + step
+      target = target + image.stride
+    }
+  }
+
+  image
+}
+
+def decode(data: ByteArray): Geometry / Exception[WrongFormat] = {
+  if (data.size < header::MINIMUM) wrongFormat()
+  if (not(data.bytes::get8(header::MAGIC) == 66 && data.bytes::get8(header::MAGIC + 1) == 77)) wrongFormat()
+
+  val start = data.bytes::get32(header::DATA)
+  val width = data.bytes::get32(header::WIDTH)
+  val rows = data.bytes::get32(header::HEIGHT)
+  val depth = data.bytes::get16(header::DEPTH)
+  val encoding = data.bytes::get32(header::ENCODING)
+
+  val height = if (rows < 0) 0 - rows else rows
+  val pitch = (((width * depth) + 31) / 32) * 4 // padded to 4 bytes
+
+  if (width <= 0 || height <= 0) wrongFormat()
+  if (not(depth == 24 || depth == 32)) wrongFormat()
+  if (not(encoding == encodings::RGB || encoding == encodings::BITFIELDS)) wrongFormat()
+  if (start < 0 || start + (pitch * height) > data.size) wrongFormat()
+  decoded(data, start, pitch, width, height, depth, rows > 0)
+}
+
+def render(on: Geometry, image: Geometry, at: Vector): Unit = on.overlay(image, at)
+def render(on: Geometry, data: ByteArray, at: Vector) = on.render(data.decode, at)

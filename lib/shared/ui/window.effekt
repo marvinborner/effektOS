@@ -1,0 +1,33 @@
+import ui/rect
+import ui/pixel
+import ui/vector
+import ui/geometry
+import ui/compositor
+
+val MARGIN = 16.0
+val TITLEBAR = 40.0
+val INSET = Vector(MARGIN, MARGIN + TITLEBAR)
+
+type WindowId = Int
+record Window(id: WindowId)
+
+interface WindowManager {
+  def create(size: Vector, accent: Color): Window // no position!
+  def size(window: Window): Vector / Exception[MissingValue]
+  def context(window: Window, position: Vector, size: Vector): Context / Exception[MissingValue]
+  def destroy(window: Window): Unit / Exception[MissingValue]
+  def dirty(window: Window, id: Context): Unit / Exception[MissingValue]
+  def at(position: Vector): Window / Exception[MissingValue]
+}
+
+def panel(geometry: Geometry, accent: Color): Unit = {
+  val body = Rect(Vector(MARGIN, MARGIN), geometry.size - (MARGIN * 2.0))
+  val bar = Rect(body.origin, Vector(body.size.x, TITLEBAR))
+  val button = Rect(body.origin + Vector(body.size.x - TITLEBAR, 0.0) + 10.0, Vector(TITLEBAR, TITLEBAR) - 20.0)
+
+  geometry.rectangle(body, accent.fade(0.6))
+  geometry.rectangle(bar, accent)
+  geometry.rectangle(button, colors::white)
+}
+
+def inBody(size: Vector, window: Window) = do context(window, INSET, size)

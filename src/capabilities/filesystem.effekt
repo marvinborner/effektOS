@@ -1,0 +1,33 @@
+// TEMPORARY filesystem based on bootloader modules
+
+import io/error
+
+extern llvm """
+  declare %Pos @c_fs_path(%Int)
+  declare %Pos @c_fs_read(%Int)
+"""
+
+extern def count() at io: Int = c "c_fs_count"
+extern def size(index: Int) at io: Int = c "c_fs_size ${index}"
+extern def path(index: Int) at io: String = llvm "%p = call %Pos @c_fs_path(%Int ${index}) ret %Pos %p"
+extern def contents(index: Int) at io: ByteArray = llvm "%d = call %Pos @c_fs_read(%Int ${index}) ret %Pos %d"
+
+record File(path: String, contents: ByteArray)
+
+def find(name: String): File / Exception[IOError] = {
+  def go(index: Int): File =
+    if (index >= count()) do raise(ENOENT(), message(ENOENT()))
+    else {
+      val current = path(index)
+      if (current == name) File(current, contents(index))
+      else go(index + 1)
+    }
+  go(0)
+}
+
+def list(): List[String] = {
+  def go(index: Int): List[String] =
+    if (index >= count()) Nil()
+    else Cons(path(index), go(index + 1))
+  go(0)
+}

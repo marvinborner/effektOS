@@ -1,3 +1,4 @@
+import ui/compositor
 import ui/geometry
 import ui/vector
 import ui/pixel
@@ -8,19 +9,7 @@ import system
 import set
 import map
 
-type ContextId = Int
-record Context(id: ContextId, geometry: Geometry)
 record Composited(position: Vector, context: Context)
-
-interface Compositor {
-  def resolution(): Vector
-  def freshContext(at: Vector, size: Vector): Context
-  def markDirty(id: ContextId): Unit
-  def move(id: ContextId, by: Vector): Unit
-  def cursor(at: Vector): Unit
-  def redrawDirty(): Unit
-  def destroy(id: ContextId): Unit
-}
 
 namespace cursor {
   val size = Vector(16.0, 16.0)
@@ -71,13 +60,14 @@ def compositor { wm: => Nothing / Compositor }: Nothing / { Output, System } = {
       resume(context)
     }
 
-    def markDirty(id) = resume(dirty.map { d => d.set::insert(id) })
+    // TODO: missing value exception
+    def markDirty(id) = resume { dirty.map { d => d.set::insert(id) } }
 
-    def move(id, by) = {
-      val Composited(position, context) = composited.get.get(id).getOrElse { resume(()) }
+    def move(id, by) = resume {
+      val Composited(position, context) = composited.get.get(id).value
       repaint.map { d => cover(d, context.geometry.bounds(position)) }
       composited.map { c => c.put(id, Composited(position + by, context)) }
-      resume(dirty.map { d => d.set::insert(id) })
+      dirty.map { d => d.set::insert(id) }
     }
 
     def cursor(at) = {
@@ -98,13 +88,14 @@ def compositor { wm: => Nothing / Compositor }: Nothing / { Output, System } = {
       }
     }
 
-    def destroy(id) = {
+    // TODO: missing value exception
+    def destroy(id) = resume {
       val area = cover(repaint.get, id.bounds)
       repaint.set(rect::empty)
       composited.map { c => c.map::delete(id) }
       dirty.map { d => d.set::delete(id) }
       compose(area)
-      resume(flush())
+      flush()
     }
   }
 }
