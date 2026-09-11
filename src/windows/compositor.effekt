@@ -1,0 +1,78 @@
+import windows/geometry
+import windows/vector
+import windows/pixel
+import windows/rect
+import syscalls
+import drivers
+
+import set
+import map
+
+type ContextId = Int
+record Context(id: ContextId, geometry: Geometry)
+record Managed(position: Vector, context: Context)
+
+interface Compositor {
+  def freshContext(at: Vector, size: Vector): Context
+  def markDirty(id: ContextId): Unit
+  def redrawDirty(): Unit
+  def destroy(id: ContextId): Unit
+}
+
+val wallpaper = colors::slate
+
+def compositor { wm: => Nothing / Compositor }: Nothing / { Output, Syscall } = {
+  var counter = 0
+  val dirty = set::empty[ContextId](box compareInt).ref
+  val managed = map::empty[ContextId, Managed](box compareInt).ref
+
+  val GPUContext(pitch, depth, width, height, gpuBuffer) = do gpuContext()
+  val screen = Geometry(Vector(width.toDouble, height.toDouble), depth, gpuBuffer)
+
+  def flush() = do framebuffer(Redraw(gpuBuffer))
+
+  def bounds(id: ContextId): Rect = managed.get.get(id) match {
+    case None() => rect::empty
+    case Some(Managed(position, context)) => context.geometry.bounds(position)
+  }
+
+  // TODO: ordering
+  def compose(area: Rect): Unit = {
+    screen.rectangle(area, wallpaper, area) // reset first
+    managed.get.foreach { (_, m) => screen.overlay(m.context.geometry, m.position, area) }
+  }
+
+  screen.fill(wallpaper)
+  flush()
+
+  try wm()
+  with Compositor {
+    def freshContext(at, size) = {
+      counter = counter + 1
+      val context = Context(counter, geometry(size, depth))
+      managed.map { m => m.put(counter, Managed(at, context)) }
+      resume(context)
+    }
+
+    def markDirty(id) = resume(dirty.map { d => d.set::insert(id) })
+
+    def redrawDirty() = {
+      var area = rect::empty
+      dirty.get.foreach { id => area = cover(area, id.bounds) }
+      if (area.empty?) resume(())
+      else {
+        compose(area)
+        dirty.set(set::empty[ContextId](box compareInt))
+        resume(flush())
+      }
+    }
+
+    def destroy(id) = {
+      val area = id.bounds
+      managed.map { m => m.map::delete(id) }
+      dirty.map { d => d.set::delete(id) }
+      compose(area)
+      resume(flush())
+    }
+  }
+}

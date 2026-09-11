@@ -3,8 +3,8 @@ import drivers/pit
 
 def empty() = NoTimerState()
 
-def init() = {
-  pit::init(1000)
+def init(hz: Int) = {
+  pit::init(hz)
 }
 
 def handler(): Unit / { State[TimerState], Input } = {

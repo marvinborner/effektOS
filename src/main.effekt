@@ -68,7 +68,7 @@ def loop(): Nothing = {
   pic::init()
 
   // capabilities
-  timer::init()
+  timer::init(100)
   keyboard::init()
   mouse::init()
   graphics::init()

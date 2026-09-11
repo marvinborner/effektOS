@@ -1,12 +1,80 @@
+// compositor machinery, acting on arbitrary "geometries"
+// efficiency is attempted by not using Vector or Color but integers
+
+import utils
+import windows/rect
+import windows/pixel
 import windows/vector
 
-record Color(red: Double, green: Double, blue: Double)
+record Geometry(size: Vector, depth: Int, buffer: ByteArray)
 
-def fill(on: Geometry, byte: Byte) =
-  each(0, (on.size.x * on.size.y * on.depth.toDouble).toInt) { i =>
-    set(on.buffer, i, byte)
+def geometry(size: Vector, depth: Int): Geometry =
+  Geometry(size, depth, bytearray::allocate(size.x.toInt * size.y.toInt * (depth / 8)))
+
+def stride(g: Geometry) = g.depth / 8
+def width(g: Geometry) = g.size.x.toInt
+def height(g: Geometry) = g.size.y.toInt
+
+def bounds(g: Geometry, at: Vector) = Rect(at, g.size)
+def bounds(g: Geometry) = g.bounds(Vector(0.0, 0.0))
+
+def offset(g: Geometry, x: Int, y: Int) = ((y * g.width) + x) * g.stride
+
+def get(g: Geometry, i: Int): Pixel = g.buffer.get64(i)
+def get(g: Geometry, x: Int, y: Int): Pixel = g.get(g.offset(x, y))
+
+def set(g: Geometry, i: Int, p: Pixel): Unit = g.buffer.set64(i, p)
+def set(g: Geometry, x: Int, y: Int, p: Pixel): Unit = g.set(g.offset(x, y), p)
+
+def draw(g: Geometry, i: Int, p: Pixel): Unit = {
+  val a = p.pixel::alpha
+  if (a == 255) g.set(i, p)
+  else if (a > 0) g.set(i, pixel::over(p, g.get(i)))
+}
+def draw(g: Geometry, x: Int, y: Int, p: Pixel): Unit = g.draw(g.offset(x, y), p)
+
+def fill(g: Geometry, color: Color): Unit = {
+  val p = color.toPixel
+  val stride = g.stride
+  var i = 0
+  each(0, g.width * g.height) { _ =>
+    g.set(i, p)
+    i = i + stride
   }
+}
 
-def overlay(on: Geometry, other: Geometry, at: Vector): Unit = <>
+/// composites `color` over `area` within `clip`.
+def rectangle(g: Geometry, area: Rect, color: Color, clip: Rect): Unit = {
+  val p = color.toPixel
+  val visible = intersection(clip, intersection(g.bounds, area))
+  val stride = g.stride
+  each(visible.top, visible.bottom) { y =>
+    var i = g.offset(visible.left, y)
+    each(visible.left, visible.right) { _ =>
+      g.draw(i, p)
+      i = i + stride
+    }
+  }
+}
 
-def square(on: Geometry, from: Vector, to: Vector, color: Color) = <>
+def rectangle(g: Geometry, area: Rect, color: Color): Unit =
+  g.rectangle(area, color, g.bounds)
+
+/// composites `other` onto `on`, restricted to the `clip` region of `on`
+def overlay(on: Geometry, other: Geometry, at: Vector, clip: Rect): Unit = {
+  val visible = intersection(clip, intersection(on.bounds, other.bounds(at)))
+  val originX = at.x.toInt
+  val originY = at.y.toInt
+  each(visible.top, visible.bottom) { y =>
+    var target = on.offset(visible.left, y)
+    var source = other.offset(visible.left - originX, y - originY)
+    each(visible.left, visible.right) { _ =>
+      on.draw(target, other.get(source))
+      target = target + on.stride
+      source = source + other.stride
+    }
+  }
+}
+
+def overlay(on: Geometry, other: Geometry, at: Vector): Unit =
+  on.overlay(other, at, on.bounds)

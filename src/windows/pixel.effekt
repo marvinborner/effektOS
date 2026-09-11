@@ -1,0 +1,52 @@
+// in [0, 1]
+record Color(red: Double, green: Double, blue: Double, alpha: Double)
+
+/// 0xAARRGGBB
+type Pixel = Int
+
+def rgb(red: Double, green: Double, blue: Double) = Color(red, green, blue, 1.0)
+
+def fade(color: Color, alpha: Double) = Color(color.red, color.green, color.blue, alpha)
+
+namespace colors {
+  val transparent = Color(0.0, 0.0, 0.0, 0.0)
+  val black = rgb(0.0, 0.0, 0.0)
+  val white = rgb(1.0, 1.0, 1.0)
+  val red = rgb(0.9, 0.2, 0.2)
+  val green = rgb(0.3, 0.8, 0.4)
+  val blue = rgb(0.3, 0.5, 0.9)
+  val yellow = rgb(0.95, 0.8, 0.2)
+  val magenta = rgb(0.8, 0.3, 0.7)
+  val cyan = rgb(0.3, 0.8, 0.85)
+  val slate = rgb(0.11, 0.12, 0.16)
+}
+
+namespace pixel {
+  def channel(value: Double) = max(0, min(255, (value * 255.0).toInt))
+  def blue(p: Pixel) = p.bitwiseAnd(255)
+  def green(p: Pixel) = p.bitwiseShr(8).bitwiseAnd(255)
+  def red(p: Pixel) = p.bitwiseShr(16).bitwiseAnd(255)
+  def alpha(p: Pixel) = p.bitwiseShr(24).bitwiseAnd(255)
+
+  def pack(red: Int, green: Int, blue: Int, alpha: Int): Pixel =
+    alpha.bitwiseShl(24) + red.bitwiseShl(16) + green.bitwiseShl(8) + blue
+
+  /// alpha-composites `top` over `bottom` (Porter-Duff)
+  def over(top: Pixel, bottom: Pixel): Pixel = {
+    val a = top.alpha
+    val rest = ((255 - a) * bottom.alpha) / 255
+    if (a == 255 || rest == 0) top else if (a == 0) bottom else pack(
+      ((top.red * a) + (bottom.red * rest)) / (a + rest),
+      ((top.green * a) + (bottom.green * rest)) / (a + rest),
+      ((top.blue * a) + (bottom.blue * rest)) / (a + rest),
+      a + rest
+    )
+  }
+}
+
+def toPixel(color: Color): Pixel = pixel::pack(
+  pixel::channel(color.red),
+  pixel::channel(color.green),
+  pixel::channel(color.blue),
+  pixel::channel(color.alpha)
+)

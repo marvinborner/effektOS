@@ -1,5 +1,9 @@
 import capabilities/graphics
-import windows/contexts
+import windows/compositor
+import windows/geometry
+import windows/vector
+import windows/pixel
+import windows/rect
 import syscalls
 import drivers
 
@@ -17,7 +21,7 @@ def header(): Unit / emit[Char] = {
 
 
 def start { inputs: => Nothing / Input }: Nothing / { Output, Syscall } = {
-  with contextManager
+  with compositor
 
   try inputs()
   with keyboard {

@@ -1,0 +1,27 @@
+import windows/vector
+
+record Rect(origin: Vector, size: Vector)
+
+def left(r: Rect) = r.origin.x.toInt
+def top(r: Rect) = r.origin.y.toInt
+def right(r: Rect) = (r.origin.x + r.size.x).toInt
+def bottom(r: Rect) = (r.origin.y + r.size.y).toInt
+
+def empty?(r: Rect) = r.left >= r.right || r.top >= r.bottom
+
+val empty = Rect(Vector(0.0, 0.0), Vector(0.0, 0.0))
+
+/// largest region contained in both `r1` and `r2`
+def intersection(r1: Rect, r2: Rect): Rect = {
+  val origin = Vector(max(r1.origin.x, r2.origin.x), max(r1.origin.y, r2.origin.y))
+  val corner = Vector(min(r1.right.toDouble, r2.right.toDouble), min(r1.bottom.toDouble, r2.bottom.toDouble))
+  Rect(origin, Vector(max(0.0, corner.x - origin.x), max(0.0, corner.y - origin.y)))
+}
+
+/// smallest region containing both `r1` and `r2`
+def cover(r1: Rect, r2: Rect): Rect =
+  if (r1.empty?) r2 else if (r2.empty?) r1 else {
+    val origin = Vector(min(r1.origin.x, r2.origin.x), min(r1.origin.y, r2.origin.y))
+    val corner = Vector(max(r1.right.toDouble, r2.right.toDouble), max(r1.bottom.toDouble, r2.bottom.toDouble))
+    Rect(origin, corner - origin)
+  }

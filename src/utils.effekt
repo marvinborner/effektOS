@@ -67,3 +67,29 @@ def scanning[A, R] { scanner: () => R / Scan[A] }: R / { next[A], emit[A] } = {
     }
   }
 }
+
+extern def get64(buffer: ByteArray, index: Int) at global: Int =
+  llvm """
+    %last = add i64 ${index}, 3
+    call void @assertInboundsByteArray(i64 %last, %Pos ${buffer})
+    %base = extractvalue %Pos ${buffer}, 1
+    %data = getelementptr inbounds i8, ptr %base, i64 16
+    %slot = getelementptr inbounds i8, ptr %data, i64 ${index}
+    %word = load i32, ptr %slot, align 1
+    %z = zext i32 %word to i64
+    tail call void @erasePositive(%Pos ${buffer})
+    ret %Int %z
+  """
+
+extern def set64(buffer: ByteArray, index: Int, value: Int) at global: Unit =
+  llvm """
+    %last = add i64 ${index}, 3
+    call void @assertInboundsByteArray(i64 %last, %Pos ${buffer})
+    %base = extractvalue %Pos ${buffer}, 1
+    %data = getelementptr inbounds i8, ptr %base, i64 16
+    %slot = getelementptr inbounds i8, ptr %data, i64 ${index}
+    %word = trunc %Int ${value} to i32
+    store i32 %word, ptr %slot, align 1
+    tail call void @erasePositive(%Pos ${buffer})
+    ret %Pos zeroinitializer
+  """
