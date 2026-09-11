@@ -1,19 +1,19 @@
 QEMU=qemu-system-x86_64
-LIBRARY := libraries/common/
-EFFEKTFLAGS := --build --backend llvm --optimize --baremetal -l $(LIBRARY) --clang-includes limine.h --includes src/ libraries/baremetal/ libraries/shared/ usr/
+LIBRARY := lib/common/
+EFFEKTFLAGS := --build --backend llvm --optimize --baremetal -l $(LIBRARY) --clang-includes limine.h --includes src/ lib/baremetal/ lib/shared/ usr/
 
 all: image.hdd
 
-libraries/limine.h:
+lib/limine.h:
 	curl -Lo $@ https://codeberg.org/Limine/limine-protocol/raw/branch/trunk/include/limine.h
 
-out/interrupts.o: libraries/baremetal/x86/interrupts.asm
-	nasm -f elf64 libraries/baremetal/x86/interrupts.asm -o out/interrupts.o
+out/interrupts.o: lib/baremetal/x86/interrupts.asm
+	nasm -f elf64 lib/baremetal/x86/interrupts.asm -o out/interrupts.o
 
-out/fpu.o: libraries/baremetal/x86/fpu.asm
-	nasm -f elf64 libraries/baremetal/x86/fpu.asm -o out/fpu.o
+out/fpu.o: lib/baremetal/x86/fpu.asm
+	nasm -f elf64 lib/baremetal/x86/fpu.asm -o out/fpu.o
 
-out/main.o: libraries/limine.h
+out/main.o: lib/limine.h
 	effekt src/main.effekt $(EFFEKTFLAGS)
 
 out/effektos: out/main.o out/interrupts.o out/fpu.o
