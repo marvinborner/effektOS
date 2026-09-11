@@ -28,6 +28,19 @@ int_table:
 	push r15
 %endmacro
 
+%macro enter_handler 1
+	mov %1, rsp
+	sub rsp, 512
+	and rsp, -16
+	fxsave64 [rsp]
+	cld
+%endmacro
+
+%macro leave_handler 1
+	fxrstor64 [rsp]
+	mov rsp, %1
+%endmacro
+
 %macro popaq 0
 	pop r15
 	pop r14
@@ -57,10 +70,12 @@ interrupt%+i:
 
 extern interrupt_handler
 interrupt_common:
-	pushaq 
+	pushaq
 	mov rdi, rsp
+	enter_handler rbx
 	call interrupt_handler
-	popaq 
+	leave_handler rbx
+	popaq
 	add rsp, 16
 	iretq
 
@@ -81,9 +96,11 @@ exception%+i:
 
 extern exception_handler
 exception_common:
-	pushaq 
+	pushaq
 	mov rdi, rsp
+	enter_handler rbx
 	call exception_handler
-	popaq 
+	leave_handler rbx
+	popaq
 	add rsp, 16
 	iretq
