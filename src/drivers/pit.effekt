@@ -9,3 +9,10 @@ def init(hz: Int) = {
   outb(0x40, divisor.bitwiseAnd(255).toByte)
   outb(0x40, divisor.bitwiseShr(8).toByte)
 }
+
+def handler(): Unit / { State[TimerState], tick } = {
+  val PITimerState(ticks) = do getState()
+    else panic("invalid timer state")
+  do setState(PITimerState(ticks + 1))
+  do tick()
+}

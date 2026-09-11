@@ -4,8 +4,8 @@ import bits
 import x86/commands
 
 // legacy ports
-val CONFIG_ADDRESS = 3320
-val CONFIG_DATA = 3324
+val ADDRESS = 3320
+val DATA = 3324
 
 record Device(bus: Int, slot: Int, function: Int)
 
@@ -20,13 +20,13 @@ def address(dev: Device, offset: Int): Int = {
 }
 
 def read32(dev: Device, offset: Int): Int = {
-  outl(CONFIG_ADDRESS, dev.address(offset))
-  inl(CONFIG_DATA)
+  outl(ADDRESS, dev.address(offset))
+  inl(DATA)
 }
 
 def write32(dev: Device, offset: Int, data: Int): Unit = {
-  outl(CONFIG_ADDRESS, dev.address(offset))
-  outl(CONFIG_DATA, data)
+  outl(ADDRESS, dev.address(offset))
+  outl(DATA, data)
 }
 
 def read16(dev: Device, offset: Int): Int = {

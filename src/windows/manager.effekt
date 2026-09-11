@@ -1,0 +1,72 @@
+import windows/compositor
+import windows/geometry
+import windows/vector
+import windows/pixel
+import windows/rect
+import drivers
+
+type WindowId = Int
+record Window(id: WindowId)
+record Managed(window: Window, position: Vector, size: Vector, contexts: List[Context])
+
+// moving, resizing, etc. is an INTERNAL operation (ie. handled directly by the `manager` function)
+interface WindowManager {
+  def create(size: Vector, accent: Color): Window // no position!
+  def size(window: Window): Vector
+  def context(window: Window, position: Vector, size: Vector): Context
+  def destroy(window: Window): Unit
+  def at(position: Vector): Window
+}
+
+def panel(geometry: Geometry, accent: Color): Unit = {
+  val margin = 16.0
+  val title = 40.0
+
+  val body = Rect(Vector(margin, margin), geometry.size - (margin * 2.0))
+  val bar = Rect(body.origin, Vector(body.size.x, title))
+  val button = Rect(body.origin + Vector(body.size.x - title, 0.0) + 10.0, Vector(title, title) - 20.0)
+
+  geometry.rectangle(body, accent.fade(0.6))
+  geometry.rectangle(bar, accent)
+  geometry.rectangle(button, colors::white)
+}
+
+def manager { windows: => Nothing / { WindowManager, Input } }: Nothing / Compositor = {
+  var counter = 0
+
+  def window(at: Vector, size: Vector, accent: Color) = {
+    val Context(id, geometry) = do freshContext(at, size)
+    geometry.panel(accent)
+    do markDirty(id)
+  }
+  
+  // TODO: figure out
+
+  try windows()
+  with WindowManager {
+    def create(size, accent) = {
+      counter = counter + 1
+      val at = Vector(180.0, 140.0) // TODO: find good location
+      // TODO: store in data structure
+      window(at, size, accent)
+      resume(Window(counter))
+    }
+
+    def size(window) = <>
+
+    def context(window, position, size) = <>
+
+    // TODO: at destroy, destroy all contexts of window as well
+    def destroy(window) = <>
+
+    def at(position) = <>
+  }
+  with keyboard {
+    case Press(ch) => resume(())
+  }
+  with mouse {
+    case Click(left, middle, right) => resume(())
+    case Move(x, y) => resume(()) // TODO: move window
+  }
+  with tick { resume(do compositor::redrawDirty()) }
+}

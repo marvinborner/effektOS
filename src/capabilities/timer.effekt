@@ -8,8 +8,5 @@ def init(hz: Int) = {
 }
 
 def handler(): Unit / { State[TimerState], Input } = {
-  val PITimerState(ticks) = do getState()
-    else panic("invalid timer state")
-  do setState(PITimerState(ticks + 1))
-  do tick()
+  pit::handler()
 }

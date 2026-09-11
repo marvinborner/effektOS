@@ -1,6 +1,7 @@
 import capabilities/graphics
 import windows/compositor
 import windows/geometry
+import windows/manager
 import windows/vector
 import windows/pixel
 import windows/rect
@@ -19,17 +20,13 @@ def header(): Unit / emit[Char] = {
   logo.each
 }
 
-
 def start { inputs: => Nothing / Input }: Nothing / { Output, Syscall } = {
   with compositor
+  with manager
 
-  try inputs()
-  with keyboard {
-    case Press(ch) => resume(())
-  }
-  with mouse {
-    case Click(left, middle, right) => resume(())
-    case Move(x, y) => resume(())
-  }
-  with tick { resume(do contexts::redrawDirty()) }
+  val window1 = do create(Vector(180.0, 140.0), colors::red)
+  val window2 = do create(Vector(560.0, 330.0), colors::green)
+  val window3 = do create(Vector(760.0, 620.0), colors::magenta)
+
+  inputs()
 }

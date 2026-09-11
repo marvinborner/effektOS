@@ -31,8 +31,8 @@ def output { outputs: => Nothing / Output }: Nothing / Global =
   outputs()
 
 def os { inputs: => Nothing / Input }: Nothing / { Output, Global } =
-  with syscalls
-  windows::start() { inputs } // no global state!
+  with syscalls // hides global state!
+  windows::start() { inputs }
 
 def input { requests: => Nothing / Request }: Nothing / { Input, Global } = {
   with interrupt::handler[TimerTick, TimerState] { timer::handler }
