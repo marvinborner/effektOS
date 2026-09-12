@@ -20,16 +20,18 @@ record Composited(position: Vector, context: Context)
 
 namespace cursor {
   val size = Vector(16.0, 16.0)
-  val color = colors::white.fade(0.5)
+  val color = colors::black.fade(0.5)
   def bounds(at: Vector) = Rect(at, size)
 }
 
-def wallpaper(screen: Geometry) = {
+def wallpaper(size: Vector, depth: Int): Geometry / System = {
   with on[WrongFormat].panic()
   with on[IOError].panic()
   val image = do open("/res/logo.bmp").contents.bmp::decode()
-  screen.fill(colors::white)
-  screen.bmp::render(image, Vector(0.0, 0.0)) // TODO: center
+  val background = geometry(size, depth)
+  background.fill(colors::white)
+  background.bmp::render(image, (size - image.size) / 2.0)
+  background
 }
 
 def compositor { wm: => Nothing / Compositor }: Nothing / { Output, System } = {
@@ -50,17 +52,18 @@ def compositor { wm: => Nothing / Compositor }: Nothing / { Output, System } = {
     case Some(Composited(position, context)) => context.geometry.bounds(position)
   }
 
+  val background = wallpaper(screen.size, depth)
+
   // TODO: ordering
   def compose(area: Rect): Unit = {
-    // TODO: reset with rectangle
-    screen.rectangle(area, colors::white, area) // reset first
+    screen.overlay(background, Vector(0.0, 0.0), area) // reset first
     composited.get.foreach { (_, c) =>
       screen.overlay(c.context.geometry, c.position, area)
     }
     screen.rectangle(cursor::bounds(pointer.get), cursor::color, area)
   }
 
-  screen.wallpaper()
+  compose(screen.bounds)
   flush()
 
   try wm()

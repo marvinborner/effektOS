@@ -43,7 +43,7 @@ def fill(g: Geometry, color: Color): Unit = {
   }
 }
 
-/// composites `color` over `area` within `clip`.
+/// composites `color` over `area` within `clip`
 def rectangle(g: Geometry, area: Rect, color: Color, clip: Rect): Unit = {
   val p = color.toPixel
   val visible = intersection(clip, intersection(g.bounds, area))
