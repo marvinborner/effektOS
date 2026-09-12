@@ -1,0 +1,8 @@
+import ui/vector
+import system/calls
+
+record Font(todo: Int)
+
+def load(font: String): Font / System = <>
+
+def write(position: Vector, size: Int, text: String, ?font: Font) = <>

@@ -3,15 +3,16 @@ import exception
 import ui/pixel
 import ui/vector
 import ui/window
+import ui/truetype
 import system/calls
 
-def alert(msg: String): Unit / { System, WindowManager } = {
+def alert(msg: String, ?font: Font): Unit / { System, WindowManager } = {
   val window = do create(Vector(180.0, 140.0), colors::red)
-  // TODO: write on body
+  write(Vector(0.0, 0.0), 20, msg)
   ()
 }
 
-def alert[E](proxy: on[E]) { prog: => Unit / Exception[E] }: Unit / { System, WindowManager } =
+def alert[E](proxy: on[E], ?font: Font) { prog: => Unit / Exception[E] }: Unit / { System, WindowManager } =
   try prog()
   with Exception[E] {
     def raise(exception: E, msg: String) = alert(msg)
