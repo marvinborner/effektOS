@@ -9,6 +9,7 @@ interface Compositor {
   def resolution(): Vector
   def freshContext(at: Vector, size: Vector): Context
   def markDirty(id: ContextId): Unit / Exception[MissingValue]
+  def focus(contexts: List[ContextId]): Unit
   def move(id: ContextId, by: Vector): Unit / Exception[MissingValue]
   def cursor(at: Vector): Unit
   def redrawDirty(): Unit

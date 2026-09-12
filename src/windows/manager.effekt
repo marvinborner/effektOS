@@ -7,6 +7,7 @@ import ui/pixel
 import ui/rect
 import drivers
 
+import utils
 import map
 
 val CASCADE = 48.0
@@ -29,9 +30,19 @@ def manager { windows: => Nothing / { WindowManager, Input } }: Nothing / Compos
   val pointer = ((screen - cursor::size) / 2.0).ref
   val grabbed = NoGrab().ref
   val cascading = Vector(CASCADE, CASCADE).ref
+  val focused: Ref[Option[WindowId]] = None().ref
 
   def lookup(id: WindowId): Option[Managed] = managed.get.get(id)
   def store(m: Managed): Unit = managed.map { ms => ms.put(m.window.id, m) }
+
+  def focused?(window: WindowId): Bool =
+    with on[MissingValue].default { false }
+    focused.get.value == window
+
+  def raise(m: Managed): Unit = {
+    focused.set(Some(m.window.id))
+    do focus(m.contexts.map { c => c.id })
+  }
 
   def frame(at: Vector, size: Vector, accent: Color): Context = {
     val context = do freshContext(at, size)
@@ -49,14 +60,14 @@ def manager { windows: => Nothing / { WindowManager, Input } }: Nothing / Compos
   }
 
   def topmostAt(position: Vector): Option[Window] = {
-    var found: Option[Window] = None()
-    managed.get.foreachReversed { (_, m) =>
-      found = found.orElse {
-        if (Rect(m.position, m.size).contains?(position)) found = Some(m.window)
-        found
-      }
+    def hit?(m: Managed) = Rect(m.position, m.size).contains?(position)
+
+    val top = focused.get match {
+      case Some(id) => lookup(id).filter {hit?}
+      case None() => None()
     }
-    found
+    // TODO: leak fewer implementation details (map ordering)
+    top.orElse { managed.get.findReversed {hit?} }.map { m => m.window }
   }
 
   def move(m: Managed, to: Vector): Unit = {
@@ -82,6 +93,7 @@ def manager { windows: => Nothing / { WindowManager, Input } }: Nothing / Compos
       with val window = topmostAt(pointer.get).foreach
       with val m = lookup(window.id).foreach
       grabbed.set(Grabbing(window.id, pointer.get - m.position))
+      if (not(focused?(window.id))) raise(m)
   }
 
   try windows()
@@ -90,7 +102,9 @@ def manager { windows: => Nothing / { WindowManager, Input } }: Nothing / Compos
       counter = counter + 1
       val window = Window(counter)
       val at = cascade(size)
-      store(Managed(window, at, size, [frame(at, size, accent)]))
+      val m = Managed(window, at, size, [frame(at, size, accent)])
+      m.store()
+      m.raise()
       resume(window)
     }
 
@@ -99,7 +113,9 @@ def manager { windows: => Nothing / { WindowManager, Input } }: Nothing / Compos
     def context(window, position, size) = resume {
       val m = lookup(window.id).value
       val context = do freshContext(m.position + position, size)
-      store(Managed(m.window, m.position, m.size, m.contexts.append([context])))
+      val updated = Managed(m.window, m.position, m.size, m.contexts.append([context]))
+      updated.store()
+      if (window.id.focused?) updated.raise() // keep all focused
       context
     }
 
@@ -114,6 +130,7 @@ def manager { windows: => Nothing / { WindowManager, Input } }: Nothing / Compos
       val m = lookup(window.id).value
       m.contexts.foreach { c => do compositor::destroy(c.id) }
       managed.map { ms => ms.map::delete(window.id) }
+      if (window.id.focused?) focused.set(None())
       grabbed.get match {
         case NoGrab() => ()
         case Grabbing(id, _) => if (id == window.id) grabbed.set(NoGrab())

@@ -1,3 +1,5 @@
+import utils
+
 import ui/compositor
 import ui/geometry
 import ui/vector
@@ -37,6 +39,7 @@ def wallpaper(size: Vector, depth: Int): Geometry / System = {
 def compositor { wm: => Nothing / Compositor }: Nothing / { Output, System } = {
   var counter = 0
   val dirty = set::empty[ContextId](box compareInt).ref
+  val focused = set::empty[ContextId](box compareInt).ref
   val composited = map::empty[ContextId, Composited](box compareInt).ref
   val repaint = rect::empty.ref
 
@@ -54,10 +57,10 @@ def compositor { wm: => Nothing / Compositor }: Nothing / { Output, System } = {
 
   val background = wallpaper(screen.size, depth)
 
-  // TODO: ordering
   def compose(area: Rect): Unit = {
-    screen.overlay(background, Vector(0.0, 0.0), area) // reset first
-    composited.get.foreach { (_, c) =>
+    screen.overlay(background, Vector(0.0, 0.0), area) // reset area first
+    // TODO: leak fewer implementation details (map ordering)
+    composited.get.foreach(focused.get) { c =>
       screen.overlay(c.context.geometry, c.position, area)
     }
     screen.rectangle(cursor::bounds(pointer.get), cursor::color, area)
@@ -79,6 +82,16 @@ def compositor { wm: => Nothing / Compositor }: Nothing / { Output, System } = {
 
     // TODO: missing value exception
     def markDirty(id) = resume { dirty.map { d => d.set::insert(id) } }
+
+    def focus(contexts) = {
+      def raise(ids: Set[ContextId]) =
+        with val id = ids.set::foreach
+        dirty.map { d => d.set::insert(id) }
+      focused.get.raise
+      focused.set(contexts.set::fromList(box compareInt))
+      focused.get.raise
+      resume(())
+    }
 
     def move(id, by) = resume {
       val Composited(position, context) = composited.get.get(id).value
@@ -111,6 +124,7 @@ def compositor { wm: => Nothing / Compositor }: Nothing / { Output, System } = {
       repaint.set(rect::empty)
       composited.map { c => c.map::delete(id) }
       dirty.map { d => d.set::delete(id) }
+      focused.map { f => f.set::delete(id) }
       compose(area)
       flush()
     }

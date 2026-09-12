@@ -1,5 +1,7 @@
 // random stuff, potentially to be added to Effekt's standard library
 
+import set
+import map
 import scanner
 
 def looping { prog: => Unit }: Nothing = {
@@ -14,6 +16,34 @@ def nothing { prog: => Unit }: Nothing = {
   prog()
   <>
 }
+
+def filter[A](self: Option[A]) { keep?: A => Bool }: Option[A] = self match {
+  case Some(v) and v.keep? => Some(v)
+  case _ => None()
+}
+
+/// map::foreach but with `focused` iterated last
+def foreach[K, V](m: Map[K, V], focused: Set[K]) { action: V => Unit }: Unit = {
+  def go(tree: map::internal::Tree[K, V], top: Bool): Unit = tree match {
+    case map::internal::Tip() => ()
+    case map::internal::Bin(_, k, v, l, r) =>
+      go(l, top)
+      if (focused.set::contains(k) == top) action(v)
+      go(r, top)
+  }
+  go(m.tree, false)
+  if (focused.set::nonEmpty) go(m.tree, true)
+}
+
+def findReversed[K, V](m: Map[K, V]) { keep?: V => Bool }: Option[V] = {
+  def go(tree: map::internal::Tree[K, V]): Option[V] = tree match {
+    case map::internal::Tip() => None()
+    case map::internal::Bin(_, _, v, l, r) =>
+      go(r).orElse { if (v.keep?) Some(v) else go(l) }
+  }
+  go(m.tree)
+}
+
 
 extern def equal?(x: Double, y: Double) at {}: Bool =
   js "(${x} === ${y})"
