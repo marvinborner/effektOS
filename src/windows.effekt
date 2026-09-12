@@ -1,13 +1,14 @@
 import windows/compositor
 import windows/manager
-import ui/window
 import drivers
-import system
 
-// import apps/kalkulator
+import ui/window
+import system/calls
 import apps/team
+// import apps/kalkulator
 
 def apps(): Unit / { System, WindowManager } = {
+  team::start()
   team::start()
 }
 

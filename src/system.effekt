@@ -1,12 +1,7 @@
 import drivers
-import io/error
 import capabilities/filesystem
 import capabilities/graphics
-
-interface System {
-  def gpuContext(): GPUContext
-  def open(name: String): File / Exception[IOError]
-}
+import system/calls
 
 def system { prog: => Nothing / { Output, System } }: Nothing / { Output, Global } =
   try prog()

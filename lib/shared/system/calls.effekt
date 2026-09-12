@@ -1,0 +1,8 @@
+import io/error
+import system/filesystem
+import system/graphics
+
+interface System {
+  def gpuContext(): GPUContext
+  def open(name: String): File / Exception[IOError]
+}

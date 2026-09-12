@@ -3,9 +3,16 @@ import ui/geometry
 import ui/vector
 import ui/pixel
 import ui/rect
-import drivers
-import system
+import ui/bmp
 
+import capabilities/filesystem
+import drivers
+
+import system/calls
+import system/graphics
+import system/filesystem
+
+import io/error
 import set
 import map
 
@@ -17,7 +24,13 @@ namespace cursor {
   def bounds(at: Vector) = Rect(at, size)
 }
 
-val wallpaper = colors::slate
+def wallpaper(screen: Geometry) = {
+  with on[WrongFormat].panic()
+  with on[IOError].panic()
+  val image = do open("/res/logo.bmp").contents.bmp::decode()
+  screen.fill(colors::white)
+  screen.bmp::render(image, Vector(0.0, 0.0)) // TODO: center
+}
 
 def compositor { wm: => Nothing / Compositor }: Nothing / { Output, System } = {
   var counter = 0
@@ -39,14 +52,15 @@ def compositor { wm: => Nothing / Compositor }: Nothing / { Output, System } = {
 
   // TODO: ordering
   def compose(area: Rect): Unit = {
-    screen.rectangle(area, wallpaper, area) // reset first
+    // TODO: reset with rectangle
+    screen.rectangle(area, colors::white, area) // reset first
     composited.get.foreach { (_, c) =>
       screen.overlay(c.context.geometry, c.position, area)
     }
     screen.rectangle(cursor::bounds(pointer.get), cursor::color, area)
   }
 
-  screen.fill(wallpaper)
+  screen.wallpaper()
   flush()
 
   try wm()

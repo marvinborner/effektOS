@@ -1,13 +1,12 @@
-import system
 import io/error
-import capabilities/filesystem // TODO: abstraction leak
-
 import ui/bmp
 import ui/pixel
 import ui/vector
 import ui/window
 import ui/geometry
 import ui/compositor
+import system/calls
+import system/filesystem
 
 val TEAM = "/res/group_jumping.bmp"
 val OFFSET = Vector(MARGIN * 2.0, (MARGIN * 2.0) + TITLEBAR)

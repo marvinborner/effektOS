@@ -1,0 +1,1 @@
+record GPUContext(pitch: Int, depth: Int, width: Int, height: Int, buffer: ByteArray)

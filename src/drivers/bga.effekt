@@ -4,6 +4,7 @@ import bits
 import drivers
 import drivers/pci
 import x86/commands
+import system/graphics
 
 val ADDRESS = 462
 val DATA = 463
