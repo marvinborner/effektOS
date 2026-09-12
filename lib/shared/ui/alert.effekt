@@ -4,12 +4,20 @@ import ui/pixel
 import ui/vector
 import ui/window
 import ui/truetype
+import ui/geometry
+import ui/compositor
 import system/calls
 
+val TEXT = 20
+val BODY = Vector(320.0, 48.0)
+
 def alert(msg: String, ?font: Font): Unit / { System, WindowManager } = {
-  val window = do create(Vector(180.0, 140.0), colors::red)
-  write(Vector(0.0, 0.0), 20, msg)
-  ()
+  with on[MissingValue].panic()
+
+  val window = do create(BODY + INSET, colors::red)
+  val area = BODY.inBody(window)
+  area.geometry.write(Vector(0.0, 0.0), TEXT, msg, colors::white)
+  do dirty(window, area)
 }
 
 def alert[E](proxy: on[E], ?font: Font) { prog: => Unit / Exception[E] }: Unit / { System, WindowManager } =

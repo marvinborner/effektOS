@@ -1,9 +1,8 @@
-import io/error
 import ui/bmp
-import ui/alert
 import ui/pixel
 import ui/vector
 import ui/window
+import ui/default
 import ui/truetype
 import ui/geometry
 import ui/compositor
@@ -11,24 +10,16 @@ import system/calls
 import system/filesystem
 
 val TEAM = "/res/group_jumping.bmp"
-val OFFSET = Vector(MARGIN * 2.0, (MARGIN * 2.0) + TITLEBAR)
 
 def start(): Unit / { System, WindowManager } = {
-  val font = load("/res/fonts/DejaVuSans.ttf")
-
-  with on[IOError].alert
-  with on[WrongFormat].alert
-  with on[MissingValue].alert
-  // TODO: finalize { closeWindows }
-
-  alert("this is a test!")
+  with val DefaultWindow(window, font) = default::window(colors::green)
 
   val image = do open(TEAM).contents.bmp::decode()
   val size = image.size
-
-  val window = do create(size + OFFSET, colors::green)
+  do resize(window, size + INSET)
 
   val area = size.inBody(window)
   area.geometry.bmp::render(image, Vector(0.0, 0.0))
+  area.geometry.write(Vector(0.0, 0.0), 24, "The Effekt team", colors::white)
   do dirty(window, area)
 }

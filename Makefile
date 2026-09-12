@@ -1,7 +1,7 @@
 QEMU=qemu-system-x86_64
 LIBRARY := lib/common/
 EFFEKTFLAGS := --build --backend llvm --optimize --baremetal -l $(LIBRARY) --clang-includes limine.h --includes src/ lib/baremetal/ lib/shared/ usr/
-RESOURCES := $(wildcard usr/res/*)
+RESOURCES := $(shell find usr/res -type f)
 
 all: image.hdd
 
@@ -21,7 +21,7 @@ out/limine.conf: limine.conf $(RESOURCES)
 	mkdir -p out
 	cp $< $@
 	for res in $(RESOURCES); do \
-		echo "    module_path: boot():/res/$$(basename $$res)" >> $@; \
+		echo "    module_path: boot():/res/$${res#usr/res/}" >> $@; \
 	done
 
 out/effektos: out/main.o out/interrupts.o out/fpu.o
@@ -39,7 +39,7 @@ image.iso: out/effektos out/limine.conf
 	mkdir -p iso_root/boot/limine
 	cp -v out/limine.conf limine/limine-bios.sys limine/limine-bios-cd.bin limine/limine-uefi-cd.bin iso_root/boot/limine/
 	mkdir -p iso_root/res
-	$(if $(RESOURCES),cp -v $(RESOURCES) iso_root/res/)
+	$(if $(RESOURCES),cp -rv usr/res/. iso_root/res/)
 	mkdir -p iso_root/EFI/BOOT
 	cp -v limine/BOOTX64.EFI iso_root/EFI/BOOT/
 	cp -v limine/BOOTIA32.EFI iso_root/EFI/BOOT/
@@ -56,7 +56,7 @@ image.hdd: out/effektos out/limine.conf
 	mmd -i image.hdd@@1M ::/EFI ::/EFI/BOOT ::/boot ::/boot/limine ::/res
 	mcopy -i image.hdd@@1M out/effektos ::/boot/effektos
 	mcopy -i image.hdd@@1M out/limine.conf limine/limine-bios.sys ::/boot/limine
-	$(if $(RESOURCES),mcopy -i image.hdd@@1M $(RESOURCES) ::/res)
+	$(if $(RESOURCES),mcopy -s -i image.hdd@@1M usr/res/* ::/res)
 	mcopy -i image.hdd@@1M limine/BOOTX64.EFI ::/EFI/BOOT
 	mcopy -i image.hdd@@1M limine/BOOTIA32.EFI ::/EFI/BOOT
 

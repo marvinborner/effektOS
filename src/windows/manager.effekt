@@ -12,7 +12,14 @@ import map
 
 val CASCADE = 48.0
 
-record Managed(window: Window, position: Vector, size: Vector, contexts: List[Context])
+record Managed(
+  window: Window,
+  accent: Color,
+  position: Vector,
+  size: Vector,
+  frame: Context,
+  contexts: List[Context]
+)
 
 type Grab {
   NoGrab();
@@ -41,12 +48,12 @@ def manager { windows: => Nothing / { WindowManager, Input } }: Nothing / Compos
 
   def raise(m: Managed): Unit = {
     focused.set(Some(m.window.id))
-    do focus(m.contexts.map { c => c.id })
+    do focus(Cons(m.frame, m.contexts).map { c => c.id })
   }
 
   def frame(at: Vector, size: Vector, accent: Color): Context = {
     val context = do freshContext(at, size)
-    context.geometry.panel(accent)
+    frame(context.geometry, accent)
     do markDirty(context.id)
     context
   }
@@ -75,7 +82,8 @@ def manager { windows: => Nothing / { WindowManager, Input } }: Nothing / Compos
     if (to == m.position) ()
     else {
       m.contexts.foreach { c => do compositor::move(c.id, by) }
-      store(Managed(m.window, to, m.size, m.contexts))
+      do compositor::move(m.frame.id, by)
+      store(Managed(m.window, m.accent, to, m.size, m.frame, m.contexts))
     }
   }
 
@@ -102,7 +110,7 @@ def manager { windows: => Nothing / { WindowManager, Input } }: Nothing / Compos
       counter = counter + 1
       val window = Window(counter)
       val at = cascade(size)
-      val m = Managed(window, at, size, [frame(at, size, accent)])
+      val m = Managed(window, accent, at, size, frame(at, size, accent), [])
       m.store()
       m.raise()
       resume(window)
@@ -110,10 +118,21 @@ def manager { windows: => Nothing / { WindowManager, Input } }: Nothing / Compos
 
     def size(window) = resume { lookup(window.id).value.size }
 
+    def resize(window, size) = resume {
+      val m = lookup(window.id).value
+      val frame = do freshContext(m.position, size)
+      window::frame(frame.geometry, m.accent)
+      do markDirty(frame.id)
+      do compositor::destroy(m.frame.id)
+      managed.map { ms =>
+        ms.put(m.window.id, Managed(m.window, m.accent, m.position, size, frame, m.contexts))
+      }
+    }
+
     def context(window, position, size) = resume {
       val m = lookup(window.id).value
       val context = do freshContext(m.position + position, size)
-      val updated = Managed(m.window, m.position, m.size, m.contexts.append([context]))
+      val updated = Managed(m.window, m.accent, m.position, m.size, m.frame, m.contexts.append([context]))
       updated.store()
       if (window.id.focused?) updated.raise() // keep all focused
       context
@@ -129,6 +148,7 @@ def manager { windows: => Nothing / { WindowManager, Input } }: Nothing / Compos
     def destroy(window) = resume {
       val m = lookup(window.id).value
       m.contexts.foreach { c => do compositor::destroy(c.id) }
+      do compositor::destroy(m.frame.id)
       managed.map { ms => ms.map::delete(window.id) }
       if (window.id.focused?) focused.set(None())
       grabbed.get match {

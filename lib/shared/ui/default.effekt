@@ -1,0 +1,28 @@
+import io/error
+
+import ui/alert
+import ui/pixel
+import ui/vector
+import ui/window
+import ui/truetype
+import system/calls
+
+record DefaultWindow(window: Window, font: Font)
+
+/// errors handled via alerts by default (can be overwritten, of course)
+effect Alerts = { Exception[IOError], Exception[MissingValue], Exception[OutOfBounds], Exception[RuntimeError], Exception[WrongFormat] }
+
+def window(accent: Color) { prog: DefaultWindow => Unit / { System, WindowManager, Alerts } }: Unit / { System, WindowManager } = {
+  with on[WrongFormat].panic
+  with on[IOError].panic
+  val font = load("/res/fonts/DejaVuSans.ttf")
+  val window = do create(Vector(200.0, 200.0), accent)
+
+  with on[IOError].alert
+  with on[MissingValue].alert
+  with on[OutOfBounds].alert
+  with on[RuntimeError].alert
+  with on[WrongFormat].alert
+  // TODO: finalize { closeWindows }
+  prog(DefaultWindow(window, font))
+}

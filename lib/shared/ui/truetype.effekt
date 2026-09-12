@@ -1,8 +1,86 @@
-import ui/vector
+import utils
+import stream
+import io/error
+
 import system/calls
+import system/filesystem
 
-record Font(todo: Int)
+import ui/rect
+import ui/pixel
+import ui/vector
+import ui/geometry
 
-def load(font: String): Font / System = <>
+record Font(data: ByteArray, info: ByteArray)
 
-def write(position: Vector, size: Int, text: String, ?font: Font) = <>
+/// header of `internal::glyph`
+namespace header {
+  val WIDTH = 0
+  val HEIGHT = 4
+  val X = 8
+  val Y = 12
+  val DATA = 16
+}
+
+namespace internal {
+  /// font's private state or empty
+  extern def init(data: ByteArray) at io: ByteArray = c "c_ttf_init"
+
+  /// distance from top of `pixels` height to baseline
+  extern def baseline(info: ByteArray, pixels: Int) at io: Int = c "c_ttf_baseline"
+
+  /// horizontal advance of `codepoint` of `size`
+  extern def step(info: ByteArray, size: Int, codepoint: Int) at io: Double = c "c_ttf_step"
+
+  /// glyph of given `size` and `codepoint`
+  extern def glyph(info: ByteArray, size: Int, codepoint: Int) at io: ByteArray = c "c_ttf_glyph"
+
+  /// u32 to i32 as i64
+  def signed(word: Int): Int = if (word >= 1.bitwiseShl(31)) word - 1.bitwiseShl(32) else word
+}
+
+def load(path: String): Font / { System, Exception[IOError], Exception[WrongFormat] } = {
+  val data = do open(path).contents
+  val info = internal::init(data)
+  if (info.size == 0) wrongFormat()
+  Font(data, info)
+}
+
+/// draws a `glyph` of `color` at `at` (relatively)
+def stamp(on: Geometry, glyph: ByteArray, at: Vector, color: Color): Unit = {
+  val width = glyph.bytes::get32(header::WIDTH)
+  val height = glyph.bytes::get32(header::HEIGHT)
+  val origin = at + Vector(
+    glyph.bytes::get32(header::X).internal::signed.toDouble,
+    glyph.bytes::get32(header::Y).internal::signed.toDouble)
+
+  val visible = intersection(on.bounds, Rect(origin, Vector(width.toDouble, height.toDouble)))
+  val originX = origin.x.toInt
+  val originY = origin.y.toInt
+
+  val red = pixel::channel(color.red)
+  val green = pixel::channel(color.green)
+  val blue = pixel::channel(color.blue)
+  val opacity = pixel::channel(color.alpha)
+
+  with val y = each(visible.top, visible.bottom)
+  var target = on.offset(visible.left, y)
+  var source = header::DATA + ((y - originY) * width) + (visible.left - originX)
+
+  with val x = each(visible.left, visible.right)
+  val alpha = (glyph.bytes::get8(source) * opacity) / 255
+  if (alpha > 0) on.draw(target, pixel::pack(red, green, blue, alpha))
+  target = target + on.stride
+  source = source + 1
+}
+
+/// draws `text` with height `size` at `at`
+def write(on: Geometry, at: Vector, size: Int, text: String, color: Color, ?font: Font): Unit = {
+  val info = font.info
+  val baseline = at.y + internal::baseline(info, size).toDouble
+  var pen = at.x
+
+  with val character = for[Char] { each(text) }
+  val codepoint = character.toInt
+  on.stamp(internal::glyph(info, size, codepoint), Vector(pen, baseline), color)
+  pen = pen + internal::step(info, size, codepoint)
+}

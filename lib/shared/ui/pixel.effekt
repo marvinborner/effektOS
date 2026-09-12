@@ -1,4 +1,4 @@
-// in [0, 1]
+/// in [0, 1]
 record Color(red: Double, green: Double, blue: Double, alpha: Double)
 
 /// 0xAARRGGBB
