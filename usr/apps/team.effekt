@@ -1,5 +1,6 @@
 import io/error
 import ui/bmp
+import ui/alert
 import ui/pixel
 import ui/vector
 import ui/window
@@ -12,9 +13,10 @@ val TEAM = "/res/group_jumping.bmp"
 val OFFSET = Vector(MARGIN * 2.0, (MARGIN * 2.0) + TITLEBAR)
 
 def start(): Unit / { System, WindowManager } = {
-  with on[IOError].ignore
-  with on[WrongFormat].ignore
-  with on[MissingValue].ignore
+  with on[IOError].alert
+  with on[WrongFormat].alert
+  with on[MissingValue].alert
+  // TODO: finalize { closeWindows }
 
   val image = do open(TEAM).contents.bmp::decode()
   val size = image.size
