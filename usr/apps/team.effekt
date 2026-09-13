@@ -12,7 +12,7 @@ import system/filesystem
 val TEAM = "/res/group_jumping.bmp"
 
 def start(): Unit / { System, WindowManager } = {
-  with val DefaultWindow(window, font) = default::window(colors::green)
+  with val DefaultWindow(window, font) = default::window("Effekt Team", colors::green)
 
   val image = do open(TEAM).contents.bmp::decode()
   val size = image.size
@@ -20,6 +20,5 @@ def start(): Unit / { System, WindowManager } = {
 
   val area = size.inBody(window)
   area.geometry.bmp::render(image, Vector(0.0, 0.0))
-  area.geometry.write(Vector(0.0, 0.0), 24, "The Effekt team", colors::white)
   do dirty(window, area)
 }

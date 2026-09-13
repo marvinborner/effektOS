@@ -1,6 +1,7 @@
 import windows/compositor
 import ui/compositor
 import ui/geometry
+import ui/truetype
 import ui/window
 import ui/vector
 import ui/pixel
@@ -14,19 +15,21 @@ val CASCADE = 48.0
 
 record Managed(
   window: Window,
-  accent: Color,
   position: Vector,
   size: Vector,
+  title: String,
+  accent: Color,
   frame: Context,
   contexts: List[Context]
 )
 
-type Grab {
-  NoGrab();
-  Grabbing(window: WindowId, inside: Vector)
+type Action {
+  NoAction();
+  Moving(window: WindowId, inside: Vector)
+  Resizing(window: WindowId)
 }
 
-def manager { windows: => Nothing / { WindowManager, Input } }: Nothing / Compositor = {
+def manager(?font: Font) { windows: => Nothing / { WindowManager, Input } }: Nothing / Compositor = {
   with on[MissingValue].panic()
 
   var counter = 0
@@ -35,7 +38,7 @@ def manager { windows: => Nothing / { WindowManager, Input } }: Nothing / Compos
 
   val managed = map::empty[WindowId, Managed](box compareInt).ref
   val pointer = ((screen - cursor::size) / 2.0).ref
-  val grabbed = NoGrab().ref
+  val action = NoAction().ref
   val cascading = Vector(CASCADE, CASCADE).ref
   val focused: Ref[Option[WindowId]] = None().ref
 
@@ -51,9 +54,9 @@ def manager { windows: => Nothing / { WindowManager, Input } }: Nothing / Compos
     do focus(Cons(m.frame, m.contexts).map { c => c.id })
   }
 
-  def frame(at: Vector, size: Vector, accent: Color): Context = {
+  def frame(at: Vector, size: Vector, title: String, accent: Color): Context = {
     val context = do freshContext(at, size)
-    frame(context.geometry, accent)
+    window::frame(context.geometry, title, accent)
     do markDirty(context.id)
     context
   }
@@ -83,34 +86,63 @@ def manager { windows: => Nothing / { WindowManager, Input } }: Nothing / Compos
     else {
       m.contexts.foreach { c => do compositor::move(c.id, by) }
       do compositor::move(m.frame.id, by)
-      store(Managed(m.window, m.accent, to, m.size, m.frame, m.contexts))
+      store(Managed(m.window, to, m.size, m.title, m.accent, m.frame, m.contexts))
     }
   }
 
-  def drag(): Unit = grabbed.get match {
-    case NoGrab() => ()
-    case Grabbing(id, inside) => lookup(id) match {
-      case None() => grabbed.set(NoGrab())
+  def resize(m: Managed, _size: Vector): Unit = {
+    val size = max(_size, Vector(50.0, 50.0))
+    // TODO: send resize event
+    val frame = do freshContext(m.position, size)
+    window::frame(frame.geometry, m.title, m.accent)
+    do markDirty(frame.id)
+    do compositor::destroy(m.frame.id)
+    managed.map { ms =>
+      ms.put(m.window.id,
+        Managed(m.window, m.position, size, m.title, m.accent, frame, m.contexts))
+    }
+  }
+
+  def drag(): Unit = action.get match {
+    case NoAction() => ()
+    case Moving(id, inside) => lookup(id) match {
+      case None() => action.set(NoAction())
       case Some(m) => m.move(clamp(pointer.get - inside, screen - m.size))
     }
+    case Resizing(id) => lookup(id) match {
+      case None() => action.set(NoAction())
+      case Some(m) => m.resize(pointer.get - m.position)
+    }
   }
 
-  def press(): Unit = grabbed.get match {
-    case Grabbing(_, _) => () // already dragging
-    case NoGrab() =>
+  def leftClick(): Unit = action.get match {
+    case Moving(_, _) => () // already moving
+    case Resizing(_) => () // currently resizing
+    case NoAction() =>
       with val window = topmostAt(pointer.get).foreach
       with val m = lookup(window.id).foreach
-      grabbed.set(Grabbing(window.id, pointer.get - m.position))
+      action.set(Moving(window.id, pointer.get - m.position))
+      if (not(focused?(window.id))) raise(m)
+  }
+
+  def rightClick(): Unit = action.get match {
+    case Resizing(_) => () // already resizing
+    case Moving(_, _) => () // currently moving
+    case NoAction() =>
+      with val window = topmostAt(pointer.get).foreach
+      with val m = lookup(window.id).foreach
+      action.set(Resizing(window.id))
       if (not(focused?(window.id))) raise(m)
   }
 
   try windows()
   with WindowManager {
-    def create(size, accent) = {
+    def create(size, title, accent) = {
       counter = counter + 1
       val window = Window(counter)
       val at = cascade(size)
-      val m = Managed(window, accent, at, size, frame(at, size, accent), [])
+      val frame = frame(at, size, title, accent)
+      val m = Managed(window, at, size, title, accent, frame, [])
       m.store()
       m.raise()
       resume(window)
@@ -120,19 +152,13 @@ def manager { windows: => Nothing / { WindowManager, Input } }: Nothing / Compos
 
     def resize(window, size) = resume {
       val m = lookup(window.id).value
-      val frame = do freshContext(m.position, size)
-      window::frame(frame.geometry, m.accent)
-      do markDirty(frame.id)
-      do compositor::destroy(m.frame.id)
-      managed.map { ms =>
-        ms.put(m.window.id, Managed(m.window, m.accent, m.position, size, frame, m.contexts))
-      }
+      m.resize(size)
     }
 
     def context(window, position, size) = resume {
       val m = lookup(window.id).value
       val context = do freshContext(m.position + position, size)
-      val updated = Managed(m.window, m.accent, m.position, m.size, m.frame, m.contexts.append([context]))
+      val updated = Managed(m.window, m.position, m.size, m.title, m.accent, m.frame, m.contexts.append([context]))
       updated.store()
       if (window.id.focused?) updated.raise() // keep all focused
       context
@@ -151,9 +177,10 @@ def manager { windows: => Nothing / { WindowManager, Input } }: Nothing / Compos
       do compositor::destroy(m.frame.id)
       managed.map { ms => ms.map::delete(window.id) }
       if (window.id.focused?) focused.set(None())
-      grabbed.get match {
-        case NoGrab() => ()
-        case Grabbing(id, _) => if (id == window.id) grabbed.set(NoGrab())
+      action.get match {
+        case NoAction() => ()
+        case Moving(id, _) => if (id == window.id) action.set(NoAction())
+        case Resizing(id) => if (id == window.id) action.set(NoAction())
       }
     }
 
@@ -164,7 +191,9 @@ def manager { windows: => Nothing / { WindowManager, Input } }: Nothing / Compos
   }
   with mouse {
     case Click(left, middle, right) => {
-      if (left) press() else grabbed.set(NoGrab())
+      if (left) leftClick()
+      else if (right) rightClick()
+      else action.set(NoAction())
       resume(())
     }
     case Move(x, y) => {

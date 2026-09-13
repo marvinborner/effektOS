@@ -14,7 +14,7 @@ val BODY = Vector(320.0, 48.0)
 def alert(msg: String, ?font: Font): Unit / { System, WindowManager } = {
   with on[MissingValue].panic()
 
-  val window = do create(BODY + INSET, colors::red)
+  val window = do create(BODY + INSET, "Alert", colors::red)
   val area = BODY.inBody(window)
   area.geometry.write(Vector(0.0, 0.0), TEXT, msg, colors::white)
   do dirty(window, area)

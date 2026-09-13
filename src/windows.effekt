@@ -1,9 +1,13 @@
+import io/error
+
 import windows/compositor
 import windows/manager
 import drivers
 
 import ui/window
+import ui/truetype
 import system/calls
+
 import apps/team
 // import apps/kalkulator
 
@@ -13,6 +17,10 @@ def apps(): Unit / { System, WindowManager } = {
 }
 
 def start { inputs: => Nothing / Input }: Nothing / { Output, System } = {
+  with on[WrongFormat].panic
+  with on[IOError].panic
+  val font = load("/res/fonts/DejaVuSans.ttf")
+
   with compositor
   with manager
 

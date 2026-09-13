@@ -38,11 +38,10 @@ extern def toPtr(address: Int) at {}: C::Ptr =
 val VENDOR = 4660 // 0x1234, QEMU/Bochs
 val DEVICE = 4369 // 0x1111
 
-def discover(): Option[C::Ptr] =
-  pci::find(VENDOR, DEVICE) match {
-    case None() => None()
-    case Some(dev) => Some(dev.bar(0).toPtr)
-  }
+def discover(): Option[C::Ptr] = pci::find(VENDOR, DEVICE) match {
+  case None() => None()
+  case Some(dev) => Some(dev.bar(0).toPtr)
+}
 
 extern def apply(fb: C::Ptr, buffer: ByteArray, n: Int) at global: Unit =
   llvm """
@@ -63,11 +62,10 @@ def enable(fb: C::Ptr, width: Short, height: Short, depth: Short) = {
   do setState(BGAFramebufferState(pitch, depth, width, height, fb))
 }
 
-def init() =
-  discover() match {
-    case None() => panic("no BGA adapter on the PCI bus")
-    case Some(fb) => enable(fb, 1920, 1200, 32)
-  }
+def init() = discover() match {
+  case None() => panic("no BGA adapter on the PCI bus")
+  case Some(fb) => enable(fb, 1920, 1200, 32)
+}
 
 def handler { prog: => Nothing / framebuffer }: Nothing / State[FramebufferState] = {
   val BGAFramebufferState(pitch, depth, width, height, fb) = do getState()

@@ -36,3 +36,9 @@ def angle(v1: Vector, v2: Vector) = {
 
 def clamp(v: Vector, limit: Vector) =
   Vector(max(0.0, min(limit.x, v.x)), max(0.0, min(limit.y, v.y)))
+
+def max(a: Vector, b: Vector) =
+  Vector(max(a.x, b.x), max(a.y, b.y))
+
+def min(a: Vector, b: Vector) =
+  Vector(min(a.x, b.x), min(a.y, b.y))

@@ -46,7 +46,7 @@ def load(path: String): Font / { System, Exception[IOError], Exception[WrongForm
 }
 
 /// draws a `glyph` of `color` at `at` (relatively)
-def stamp(on: Geometry, glyph: ByteArray, at: Vector, color: Color): Unit = {
+def draw(on: Geometry, glyph: ByteArray, at: Vector, color: Color): Unit = {
   val width = glyph.bytes::get32(header::WIDTH)
   val height = glyph.bytes::get32(header::HEIGHT)
   val origin = at + Vector(
@@ -81,6 +81,6 @@ def write(on: Geometry, at: Vector, size: Int, text: String, color: Color, ?font
 
   with val character = for[Char] { each(text) }
   val codepoint = character.toInt
-  on.stamp(internal::glyph(info, size, codepoint), Vector(pen, baseline), color)
+  on.draw(internal::glyph(info, size, codepoint), Vector(pen, baseline), color)
   pen = pen + internal::step(info, size, codepoint)
 }
