@@ -1,17 +1,21 @@
 import ui/vector
 import ui/geometry
 
+type GroupId = Int
 type ContextId = Int
 
 record Context(id: ContextId, geometry: Geometry)
 
 interface Compositor {
   def resolution(): Vector
-  def freshContext(at: Vector, size: Vector): Context
+  def createGroup(): GroupId
+  def createContext(id: GroupId, at: Vector, size: Vector): Context / Exception[MissingValue]
   def markDirty(id: ContextId): Unit / Exception[MissingValue]
-  def focus(contexts: List[ContextId]): Unit
+  def focus(group: GroupId): Unit / Exception[MissingValue]
   def move(id: ContextId, by: Vector): Unit / Exception[MissingValue]
+  def resize(id: ContextId, size: Vector): Context / Exception[MissingValue]
   def cursor(at: Vector): Unit
   def redrawDirty(): Unit
-  def destroy(id: ContextId): Unit / Exception[MissingValue]
+  def destroyContext(id: ContextId): Unit / Exception[MissingValue]
+  def destroyGroup(id: GroupId): Unit / Exception[MissingValue]
 }

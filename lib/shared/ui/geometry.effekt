@@ -8,8 +8,10 @@ import ui/vector
 
 record Geometry(size: Vector, depth: Int, buffer: ByteArray)
 
+def bytes(size: Vector, depth: Int): Int = size.x.toInt * size.y.toInt * (depth / 8)
+
 def geometry(size: Vector, depth: Int): Geometry =
-  Geometry(size, depth, bytearray::allocate(size.x.toInt * size.y.toInt * (depth / 8)))
+  Geometry(size, depth, bytearray::allocate(bytes(size, depth)))
 
 def stride(g: Geometry) = g.depth / 8
 def width(g: Geometry) = g.size.x.toInt

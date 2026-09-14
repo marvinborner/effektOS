@@ -65,7 +65,7 @@ def frame(geometry: Geometry, title: String, accent: Color, ?font: Font): Unit =
   val button = Rect(body.origin + Vector(body.size.x - TITLEBAR, 0.0) + MARGIN,
                     Vector(TITLEBAR, TITLEBAR) - MARGIN * 2.0)
 
-  geometry.rectangle(body, accent.fade(0.6))
+  geometry.fill(accent.fade(0.6))
   geometry.rectangle(bar, accent)
   geometry.rectangle(button, colors::white)
   geometry.write(Vector(MARGIN, (TITLEBAR - TITLETEXT.toDouble) / 2.0), TITLETEXT, title, colors::white)

@@ -18,7 +18,7 @@ import io/error
 import set
 import map
 
-record Composited(position: Vector, context: Context)
+record Composited(group: GroupId, position: Vector, context: Context)
 
 namespace cursor {
   val size = Vector(16.0, 16.0)
@@ -37,10 +37,12 @@ def wallpaper(size: Vector, depth: Int): Geometry / System = {
 }
 
 def compositor { wm: => Nothing / Compositor }: Nothing / { Output, System } = {
-  var counter = 0
+  var contextCounter = 0
+  var groupCounter = 0
   val dirty = set::empty[ContextId](box compareInt).ref
-  val focused = set::empty[ContextId](box compareInt).ref
   val composited = map::empty[ContextId, Composited](box compareInt).ref
+  val grouped = map::empty[GroupId, List[ContextId]](box compareInt).ref
+  val stack: Ref[List[GroupId]] = Nil().ref // bottom to top
   val repaint = rect::empty.ref
 
   val pointer = (Vector(0.0, 0.0) - cursor::size).ref
@@ -48,56 +50,84 @@ def compositor { wm: => Nothing / Compositor }: Nothing / { Output, System } = {
   val GPUContext(pitch, depth, width, height, gpuBuffer) = do gpuContext()
   val screen = Geometry(Vector(width.toDouble, height.toDouble), depth, gpuBuffer)
 
-  def flush() = do framebuffer(Redraw(gpuBuffer))
+  def flush(area: Rect) = {
+    val visible = intersection(area, screen.bounds)
+    if (not(visible.empty?))
+      do framebuffer(Redraw(gpuBuffer, visible.left, visible.top,
+                            visible.right - visible.left, visible.bottom - visible.top))
+  }
 
   def bounds(id: ContextId): Rect = composited.get.get(id) match {
     case None() => rect::empty
-    case Some(Composited(position, context)) => context.geometry.bounds(position)
+    case Some(Composited(_, position, context)) => context.geometry.bounds(position)
+  }
+
+  def contexts(group: GroupId): List[ContextId] = grouped.get.get(group).getOrElse { Nil() }
+
+  def destroy(id: ContextId): Unit = {
+    repaint.map { d => cover(d, id.bounds) }
+    dirty.map { d => d.set::delete(id) }
+    composited.map { c => c.map::delete(id) }
   }
 
   val background = wallpaper(screen.size, depth)
 
   def compose(area: Rect): Unit = {
     screen.overlay(background, Vector(0.0, 0.0), area) // reset area first
-    // TODO: leak fewer implementation details (map ordering)
-    composited.get.foreach(focused.get) { c =>
+    stack.get.foreach { group =>
+      with val id = group.contexts.foreach
+      with val c = composited.get.get(id).foreach
       screen.overlay(c.context.geometry, c.position, area)
     }
     screen.rectangle(cursor::bounds(pointer.get), cursor::color, area)
   }
 
   compose(screen.bounds)
-  flush()
+  flush(screen.bounds)
 
   try wm()
   with Compositor {
     def resolution() = resume(screen.size)
 
-    def freshContext(at, size) = {
-      counter = counter + 1
-      val context = Context(counter, geometry(size, depth))
-      composited.map { c => c.put(counter, Composited(at, context)) }
-      resume(context)
+    def createGroup() = {
+      groupCounter = groupCounter + 1
+      grouped.map { g => g.put(groupCounter, Nil()) }
+      stack.map { s => s.append([groupCounter]) }
+      resume(groupCounter)
+    }
+
+    def createContext(group, at, size) = resume {
+      contextCounter = contextCounter + 1
+      val context = Context(contextCounter, geometry(size, depth))
+      composited.map { c => c.put(contextCounter, Composited(group, at, context)) }
+      val others = grouped.get.get(group).value
+      grouped.map { g => g.put(group, others.append([contextCounter])) }
+      context
     }
 
     // TODO: missing value exception
     def markDirty(id) = resume { dirty.map { d => d.set::insert(id) } }
 
-    def focus(contexts) = {
-      def raise(ids: Set[ContextId]) =
-        with val id = ids.set::foreach
-        dirty.map { d => d.set::insert(id) }
-      focused.get.raise
-      focused.set(contexts.set::fromList(box compareInt))
-      focused.get.raise
-      resume(())
+    def focus(group) = resume {
+      val raised = grouped.get.get(group).value
+      stack.map { s => s.filter { g => g != group }.append([group]) }
+      raised.foreach { id => dirty.map { d => d.set::insert(id) } }
     }
 
     def move(id, by) = resume {
-      val Composited(position, context) = composited.get.get(id).value
+      val Composited(group, position, context) = composited.get.get(id).value
       repaint.map { d => cover(d, context.geometry.bounds(position)) }
-      composited.map { c => c.put(id, Composited(position + by, context)) }
+      composited.map { c => c.put(id, Composited(group, position + by, context)) }
       dirty.map { d => d.set::insert(id) }
+    }
+
+    def resize(id, size) = resume {
+      val Composited(group, position, context) = composited.get.get(id).value
+      repaint.map { d => cover(d, context.geometry.bounds(position)) }
+      val resized = Context(id, geometry(size, depth))
+      composited.map { c => c.put(id, Composited(group, position, resized)) }
+      dirty.map { d => d.set::insert(id) }
+      resized
     }
 
     def cursor(at) = {
@@ -114,19 +144,23 @@ def compositor { wm: => Nothing / Compositor }: Nothing / { Output, System } = {
       else {
         compose(area)
         dirty.set(set::empty[ContextId](box compareInt))
-        resume(flush())
+        resume(flush(area))
       }
     }
 
     // TODO: missing value exception
-    def destroy(id) = resume {
-      val area = cover(repaint.get, id.bounds)
-      repaint.set(rect::empty)
-      composited.map { c => c.map::delete(id) }
-      dirty.map { d => d.set::delete(id) }
-      focused.map { f => f.set::delete(id) }
-      compose(area)
-      flush()
+    def destroyContext(id) = resume {
+      composited.get.get(id).foreach { c =>
+        grouped.map { g => g.put(c.group, c.group.contexts.filter { m => m != id }) }
+      }
+      id.destroy()
+      // not immediatly flushed!
+    }
+
+    def destroyGroup(id) = resume {
+      grouped.get.get(id).value.foreach { id => id.destroy() }
+      grouped.map { g => g.map::delete(id) }
+      stack.map { s => s.filter { g => g != id } }
     }
   }
 }

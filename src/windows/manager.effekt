@@ -17,6 +17,7 @@ val CASCADE = 48.0
 record Managed(
   window: Window,
   owner: Process,
+  group: GroupId,
   position: Vector,
   size: Vector,
   title: String,
@@ -39,25 +40,26 @@ def manager(?font: Font) { inputs: => Nothing / Input } { apps: { => Nothing / A
   val screen = do resolution()
 
   val managed = map::empty[WindowId, Managed](box compareInt).ref
+  val stack: Ref[List[WindowId]] = Nil().ref // top to bottom
   val pointer = ((screen - cursor::size) / 2.0).ref
   val action = NoAction().ref
   val cascading = Vector(CASCADE, CASCADE).ref
-  val focused: Ref[Option[WindowId]] = None().ref
 
   def lookup(id: WindowId): Option[Managed] = managed.get.get(id)
   def store(m: Managed): Unit = managed.map { ms => ms.put(m.window.id, m) }
 
-  def focused?(window: WindowId): Bool =
-    with on[MissingValue].default { false }
-    focused.get.value == window
-
-  def raise(m: Managed): Unit = {
-    focused.set(Some(m.window.id))
-    do focus(Cons(m.frame, m.contexts).map { c => c.id })
+  def focused?(window: WindowId): Bool = stack.get.headOption match {
+    case Some(top) => top == window
+    case None() => false
   }
 
-  def frame(at: Vector, size: Vector, title: String, accent: Color): Context = {
-    val context = do freshContext(at, size)
+  def raise(m: Managed): Unit = {
+    stack.map { s => Cons(m.window.id, s.filter { w => w != m.window.id }) }
+    do focus(m.group)
+  }
+
+  def frame(group: GroupId, at: Vector, size: Vector, title: String, accent: Color): Context = {
+    val context = do createContext(group, at, size)
     window::frame(context.geometry, title, accent)
     do markDirty(context.id)
     context
@@ -73,13 +75,14 @@ def manager(?font: Font) { inputs: => Nothing / Input } { apps: { => Nothing / A
 
   def topmostAt(position: Vector): Option[Window] = {
     def hit?(m: Managed) = Rect(m.position, m.size).contains?(position)
-
-    val top = focused.get match {
-      case Some(id) => lookup(id).filter {hit?}
-      case None() => None()
+    def go(windows: List[WindowId]): Option[Window] = windows match {
+      case Nil() => None()
+      case Cons(w, below) => lookup(w).filter {hit?} match {
+        case Some(m) => Some(m.window)
+        case None() => go(below)
+      }
     }
-    // TODO: leak fewer implementation details (map ordering)
-    top.orElse { managed.get.findReversed {hit?} }.map { m => m.window }
+    go(stack.get)
   }
 
   def move(m: Managed, to: Vector): Unit = {
@@ -88,23 +91,19 @@ def manager(?font: Font) { inputs: => Nothing / Input } { apps: { => Nothing / A
     else {
       m.contexts.foreach { c => do compositor::move(c.id, by) }
       do compositor::move(m.frame.id, by)
-      store(Managed(m.window, m.owner, to, m.size, m.title, m.accent, m.frame, m.contexts))
+      store(Managed(m.window, m.owner, m.group, to, m.size, m.title, m.accent, m.frame, m.contexts))
     }
   }
 
   // TODO: clip underlying contexts
   def resize(m: Managed, _size: Vector): Vector = {
     val size = max(_size, Vector(50.0, 50.0))
-    val frame = do freshContext(m.position, size)
-    window::frame(frame.geometry, m.title, m.accent)
-    do markDirty(frame.id)
-    do compositor::destroy(m.frame.id)
-    // m.contexts.foreach { c => do compositor::destroy(c.id) } // TODO: m.contexts = []?
-    managed.map { ms =>
-      ms.put(m.window.id,
-        Managed(m.window, m.owner, m.position, size, m.title, m.accent, frame, m.contexts))
+    if (size == m.size) size else {
+      val frame = do compositor::resize(m.frame.id, size)
+      window::frame(frame.geometry, m.title, m.accent)
+      store(Managed(m.window, m.owner, m.group, m.position, size, m.title, m.accent, frame, m.contexts))
+      size
     }
-    size
   }
 
   def drag(): Unit / Apps = action.get match {
@@ -117,7 +116,7 @@ def manager(?font: Font) { inputs: => Nothing / Input } { apps: { => Nothing / A
       case None() => action.set(NoAction())
       case Some(m) => {
         val resized = m.resize(pointer.get - m.position)
-        do send(m.owner, Resize(resized))
+        if (not(resized == m.size)) do send(m.owner, Resize(resized))
       }
     }
   }
@@ -158,11 +157,14 @@ def manager(?font: Font) { inputs: => Nothing / Input } { apps: { => Nothing / A
       case MouseEvent::Move(x, y) => {
         pointer.set(clamp(pointer.get + Vector(x, 0.0 - y), screen - cursor::size))
         do cursor(pointer.get)
-        drag()
         resume(())
       }
     }
-    with tick { resume(do compositor::redrawDirty()) }
+
+    with tick {
+      drag()
+      resume(do compositor::redrawDirty())
+    }
   }
 
   try apps {handlers}
@@ -170,9 +172,10 @@ def manager(?font: Font) { inputs: => Nothing / Input } { apps: { => Nothing / A
     def create(owner, size, title, accent) = {
       counter = counter + 1
       val window = Window(counter)
+      val group = do createGroup()
       val at = cascade(size)
-      val frame = frame(at, size, title, accent)
-      val m = Managed(window, owner, at, size, title, accent, frame, [])
+      val frame = frame(group, at, size, title, accent)
+      val m = Managed(window, owner, group, at, size, title, accent, frame, [])
       m.store()
       m.raise()
       resume(window)
@@ -188,10 +191,8 @@ def manager(?font: Font) { inputs: => Nothing / Input } { apps: { => Nothing / A
 
     def context(window, position, size) = resume {
       val m = lookup(window.id).value
-      val context = do freshContext(m.position + position, size)
-      val updated = Managed(m.window, m.owner, m.position, m.size, m.title, m.accent, m.frame, m.contexts.append([context]))
-      updated.store()
-      if (window.id.focused?) updated.raise() // keep all focused
+      val context = do createContext(m.group, m.position + position, size)
+      store(Managed(m.window, m.owner, m.group, m.position, m.size, m.title, m.accent, m.frame, m.contexts.append([context])))
       context
     }
 
@@ -204,10 +205,9 @@ def manager(?font: Font) { inputs: => Nothing / Input } { apps: { => Nothing / A
 
     def destroy(window) = resume {
       val m = lookup(window.id).value
-      m.contexts.foreach { c => do compositor::destroy(c.id) }
-      do compositor::destroy(m.frame.id)
+      do destroyGroup(m.group)
       managed.map { ms => ms.map::delete(window.id) }
-      if (window.id.focused?) focused.set(None())
+      stack.map { s => s.filter { w => w != window.id } }
       action.get match {
         case NoAction() => ()
         case Moving(id, _) => if (id == window.id) action.set(NoAction())
@@ -220,8 +220,8 @@ def manager(?font: Font) { inputs: => Nothing / Input } { apps: { => Nothing / A
       val updated = m.contexts.filter { c => c.id != context.id }
       if (updated.size == m.contexts.size) // TODO
         missingValue()
-      do compositor::destroy(context.id)
-      store(Managed(m.window, m.owner, m.position, m.size, m.title, m.accent, m.frame, updated))
+      do destroyContext(context.id)
+      store(Managed(m.window, m.owner, m.group, m.position, m.size, m.title, m.accent, m.frame, updated))
     }
 
     def at(position) = resume { topmostAt(position).value }

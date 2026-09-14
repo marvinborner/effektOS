@@ -48,7 +48,7 @@ effect Input = { keyboard, mouse, tick }
 
 // --- output events ---
 
-type FramebufferEvent { Redraw(buffer: ByteArray) }
+type FramebufferEvent { Redraw(buffer: ByteArray, x: Int, y: Int, width: Int, height: Int) }
 
 effect framebuffer(ev: FramebufferEvent): Unit
 effect Output = { framebuffer }
