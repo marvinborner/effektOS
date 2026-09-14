@@ -1,0 +1,51 @@
+import map
+import set
+
+import system/process
+
+/// cooperative scheduling by `receive` yield
+def processes[Task, Message, Filter](boot: List[Task], filter: (Message) => Filter at {})
+    { run: (Task) => Unit / IPC[Task, Message, Filter] }
+    { kernel: => Nothing / IPC[Task, Message, Filter] }: Nothing = region scheduler {
+  val counter = SYSTEM.id.ref
+  var queue: Map[ProcessId, (Set[Filter], Message => Unit at {scheduler, run, global, io})] in scheduler = map::empty(box compareInt)
+
+  def forward(process: Process, message: Message): Unit = {
+    // TODO: never drop (inbox)
+    with val (filters, blocked) = queue.get(process.id).foreach
+    if (filters.contains(filter(message))) {
+      queue = queue.delete(process.id)
+      blocked(message)
+    }
+  }
+
+  def start(task: Task): Process = {
+    counter.map { pid => pid + 1 }
+    val pid = counter.get
+
+    try run(task)
+    with IPC[Task, Message, Filter] {
+      def current() = resume(Process(pid))
+      def spawn(task) = resume(start(task))
+      def send(process, message) = resume(forward(process, message))
+      def receive(on) = {
+        queue = queue.put(pid, (on, box resume))
+        // no resume!
+      }
+    }
+    Process(pid)
+  }
+
+  boot.foreach { task =>
+    start(task)
+    ()
+  }
+
+  try kernel()
+  with IPC[Task, Message, Filter] {
+    def current() = resume(SYSTEM)
+    def spawn(task) = resume(start(task))
+    def send(process, message) = resume(forward(process, message))
+    def receive(on) = <> // TODO: shall the kernel ever yield?
+  }
+}

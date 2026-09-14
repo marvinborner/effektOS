@@ -5,6 +5,7 @@ import ui/truetype
 import ui/geometry
 import ui/compositor
 import system/calls
+import system/process
 
 import set
 
@@ -42,7 +43,7 @@ type WindowId = Int
 record Window(id: WindowId)
 
 interface WindowManager {
-  def create(size: Vector, title: String, accent: Color): Window // no position!
+  def create(owner: Process, size: Vector, title: String, accent: Color): Window // no position!
   def size(window: Window): Vector / Exception[MissingValue]
   def resize(window: Window, size: Vector): Unit / Exception[MissingValue]
   def context(window: Window, position: Vector, size: Vector): Context / Exception[MissingValue]
@@ -52,15 +53,10 @@ interface WindowManager {
   def at(position: Vector): Window / Exception[MissingValue]
 }
 
-// TODO: at some point IPC should not be about windows at all
-// TODO: then, WindowManager effect shall be removed from Apps
-interface IPC {
-  def spawn(app: App): Option[Window]
-  def send(window: Window, event: EventKind): Unit
-  def receive(window: Window, on: Set[Listen]): EventKind // yield
-}
+// TODO: remove WindowManager effect from Apps (make it an app itself)
+record App(start: (=> Unit / { System, WindowManager, Apps }) at {global, io})
 
-type App = (=> Unit / { System, WindowManager, IPC }) at {global, io}
+effect Apps = IPC[App, EventKind, Listen]
 
 def frame(geometry: Geometry, title: String, accent: Color, ?font: Font): Unit = {
   val body = Rect(Vector(0.0, 0.0), geometry.size)
@@ -74,9 +70,17 @@ def frame(geometry: Geometry, title: String, accent: Color, ?font: Font): Unit =
   geometry.write(Vector(MARGIN, (TITLEBAR - TITLETEXT.toDouble) / 2.0), TITLETEXT, title, colors::white)
 }
 
+// TODO: let window manager reflect on Process?
+def create(size: Vector, title: String, accent: Color): Window / { WindowManager, Apps } =
+  do create(do current(), size, title, accent)
+
 def inBody(size: Vector, window: Window) = do context(window, INSET, size)
 
-def listen(on: List[Listen], ?window: Window): Unit / { IPC, event } = {
-  do event(do receive(window, set::fromList(on, box compare)))
-  listen(on)
+def listen(on: List[Listen]): Unit / { Apps, event } = {
+  val listens = set::fromList(on, box compare)
+  def go(): Unit = {
+    do event(do receive(listens))
+    go()
+  }
+  go()
 }

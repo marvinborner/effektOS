@@ -8,15 +8,16 @@ import ui/truetype
 import ui/geometry
 import ui/compositor
 import system/calls
+import system/process
 
 val AREA = Vector(200.0, 50.0)
 val NOTE = 20
 
-def start(root?: Bool): Unit / { System, WindowManager, IPC } = {
+def start(root?: Bool): Unit / { System, WindowManager, Apps } = {
   with val DefaultWindow(window, font) = default::window(s"IPC Demo (root: ${root?.show})", colors::blue)
 
   val area = AREA.inBody(window)
-  val other = if (root?) do spawn(app(false)) else None()
+  val other: Option[Process] = if (root?) Some(do spawn(app(false))) else None()
 
   def note(text: String): Unit = {
     area.geometry.rectangle(Rect(Vector(0.0, 0.0), AREA), colors::black)
@@ -27,7 +28,7 @@ def start(root?: Bool): Unit / { System, WindowManager, IPC } = {
   try listen([OnResize(), OnMessage(), OnExit()])
   with event {
     case Resize(size) => {
-      other.foreach { m => do send(m, Message(s"${size.x.toInt.show}x${size.y.toInt.show}")) }
+      other.foreach { process => do send(process, Message(s"${size.x.toInt.show}x${size.y.toInt.show}")) }
       resume(())
     }
     case Message(text) => resume(note("root is " ++ text))
@@ -36,4 +37,4 @@ def start(root?: Bool): Unit / { System, WindowManager, IPC } = {
   }
 }
 
-def app(root?: Bool): App = box { start(root?) }
+def app(root?: Bool): App = App(box { start(root?) })

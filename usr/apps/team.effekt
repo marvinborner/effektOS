@@ -11,7 +11,7 @@ import system/filesystem
 
 val TEAM = "/res/group_jumping.bmp"
 
-def start(): Unit / { System, WindowManager, IPC } = {
+def start(): Unit / { System, WindowManager, Apps } = {
   with val DefaultWindow(window, font) = default::window("Effekt Team", colors::green)
 
   val image = do open(TEAM).contents.bmp::decode()
@@ -41,4 +41,4 @@ def start(): Unit / { System, WindowManager, IPC } = {
   }
 }
 
-def app(): App = box start
+def app(): App = App(box start)

@@ -1,4 +1,5 @@
 import windows/compositor
+import system/process
 import ui/compositor
 import ui/geometry
 import ui/truetype
@@ -15,6 +16,7 @@ val CASCADE = 48.0
 
 record Managed(
   window: Window,
+  owner: Process,
   position: Vector,
   size: Vector,
   title: String,
@@ -29,7 +31,7 @@ type Action {
   Resizing(window: WindowId)
 }
 
-def manager(?font: Font) { inputs: => Nothing / Input } { apps: { => Nothing / IPC } => Nothing / WindowManager }: Nothing / Compositor = {
+def manager(?font: Font) { inputs: => Nothing / Input } { apps: { => Nothing / Apps } => Nothing / WindowManager }: Nothing / Compositor = {
   with on[MissingValue].panic()
 
   var counter = 0
@@ -86,7 +88,7 @@ def manager(?font: Font) { inputs: => Nothing / Input } { apps: { => Nothing / I
     else {
       m.contexts.foreach { c => do compositor::move(c.id, by) }
       do compositor::move(m.frame.id, by)
-      store(Managed(m.window, to, m.size, m.title, m.accent, m.frame, m.contexts))
+      store(Managed(m.window, m.owner, to, m.size, m.title, m.accent, m.frame, m.contexts))
     }
   }
 
@@ -100,12 +102,12 @@ def manager(?font: Font) { inputs: => Nothing / Input } { apps: { => Nothing / I
     // m.contexts.foreach { c => do compositor::destroy(c.id) } // TODO: m.contexts = []?
     managed.map { ms =>
       ms.put(m.window.id,
-        Managed(m.window, m.position, size, m.title, m.accent, frame, m.contexts))
+        Managed(m.window, m.owner, m.position, size, m.title, m.accent, frame, m.contexts))
     }
     size
   }
 
-  def drag(): Unit / IPC = action.get match {
+  def drag(): Unit / Apps = action.get match {
     case NoAction() => ()
     case Moving(id, inside) => lookup(id) match {
       case None() => action.set(NoAction())
@@ -115,7 +117,7 @@ def manager(?font: Font) { inputs: => Nothing / Input } { apps: { => Nothing / I
       case None() => action.set(NoAction())
       case Some(m) => {
         val resized = m.resize(pointer.get - m.position)
-        do send(m.window, Resize(resized))
+        do send(m.owner, Resize(resized))
       }
     }
   }
@@ -140,8 +142,7 @@ def manager(?font: Font) { inputs: => Nothing / Input } { apps: { => Nothing / I
       if (not(focused?(window.id))) raise(m)
   }
 
-  // TODO: do not abstract?
-  def handlers(): Nothing / IPC = {
+  def handlers(): Nothing / Apps = {
     try inputs()
     with keyboard {
       case KeyboardEvent::Press(ch) => resume(())
@@ -166,12 +167,12 @@ def manager(?font: Font) { inputs: => Nothing / Input } { apps: { => Nothing / I
 
   try apps {handlers}
   with WindowManager {
-    def create(size, title, accent) = {
+    def create(owner, size, title, accent) = {
       counter = counter + 1
       val window = Window(counter)
       val at = cascade(size)
       val frame = frame(at, size, title, accent)
-      val m = Managed(window, at, size, title, accent, frame, [])
+      val m = Managed(window, owner, at, size, title, accent, frame, [])
       m.store()
       m.raise()
       resume(window)
@@ -188,7 +189,7 @@ def manager(?font: Font) { inputs: => Nothing / Input } { apps: { => Nothing / I
     def context(window, position, size) = resume {
       val m = lookup(window.id).value
       val context = do freshContext(m.position + position, size)
-      val updated = Managed(m.window, m.position, m.size, m.title, m.accent, m.frame, m.contexts.append([context]))
+      val updated = Managed(m.window, m.owner, m.position, m.size, m.title, m.accent, m.frame, m.contexts.append([context]))
       updated.store()
       if (window.id.focused?) updated.raise() // keep all focused
       context
@@ -220,7 +221,7 @@ def manager(?font: Font) { inputs: => Nothing / Input } { apps: { => Nothing / I
       if (updated.size == m.contexts.size) // TODO
         missingValue()
       do compositor::destroy(context.id)
-      store(Managed(m.window, m.position, m.size, m.title, m.accent, m.frame, updated))
+      store(Managed(m.window, m.owner, m.position, m.size, m.title, m.accent, m.frame, updated))
     }
 
     def at(position) = resume { topmostAt(position).value }
