@@ -9,6 +9,7 @@ import system/calls
 import system/process
 
 val TEXT = 50
+val SIZE = 200.0
 
 def start(): Unit / { System, WindowManager, Apps } = {
   with val DefaultWindow(window, font) = default::window("Clock", colors::yellow)
@@ -16,10 +17,12 @@ def start(): Unit / { System, WindowManager, Apps } = {
 
   var area = Vector(0.0, 0.0).inBody(window)
   def tick() = {
-    val text = s"${time.show} ticks"
+    val text = time.show
     time = time + 1
     do remove(window, area)
-    val size = Vector(text.width(TEXT) + 2.0 * MARGIN, TEXT.toDouble + 2.0 * MARGIN)
+    val textWidth = max(text.width(TEXT), SIZE)
+    val size = area.geometry.size.max(
+      Vector(textWidth + 2.0 * MARGIN, TEXT.toDouble + 2.0 * MARGIN))
     do resize(window, size + INSET)
     area = size.inBody(window)
     area.geometry.write(Vector(MARGIN, MARGIN), TEXT, text, colors::black)

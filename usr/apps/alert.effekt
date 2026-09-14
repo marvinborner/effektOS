@@ -17,7 +17,7 @@ def start(): Unit / { System, WindowManager, Apps } = {
   with on[IOError].panic
   with on[MissingValue].panic
   with on[WrongFormat].panic
-  val font = load("/res/fonts/DejaVuSans.ttf")
+  val font = load("/res/fonts/ValleySans-Regular.ttf")
   val window = create(Vector(SIZE, SIZE), "Alert", colors::red)
 
   var area = Vector(0.0, 0.0).inBody(window)

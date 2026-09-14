@@ -15,7 +15,7 @@ import apps/clock
 def start { inputs: => Nothing / Input }: Nothing / { Output, System } = {
   with on[WrongFormat].panic
   with on[IOError].panic
-  val font = load("/res/fonts/DejaVuSans.ttf")
+  val font = load("/res/fonts/ValleySans-Regular.ttf")
 
   with compositor
   with def handlers = manager {inputs}

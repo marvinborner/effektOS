@@ -6,16 +6,22 @@ import ui/vector
 import ui/window
 import ui/truetype
 import system/calls
+import system/process
 
 record DefaultWindow(window: Window, font: Font)
 
 /// errors handled via alerts by default (can be overwritten, of course)
 effect Alerts = { Exception[IOError], Exception[MissingValue], Exception[OutOfBounds], Exception[RuntimeError], Exception[WrongFormat] }
 
+def selfDestroy(): Unit / Apps = {
+  val process = do current()
+  do send(process, Exit())
+}
+
 def window(title: String, accent: Color) { prog: DefaultWindow => Unit / { System, WindowManager, Apps, Alerts } }: Unit / { System, WindowManager, Apps } = {
   with on[WrongFormat].panic
   with on[IOError].panic
-  val font = load("/res/fonts/DejaVuSans.ttf")
+  val font = load("/res/fonts/ValleySans-Regular.ttf")
   val window = create(Vector(200.0, 200.0), title, accent)
 
   with on[IOError].alert
@@ -23,6 +29,10 @@ def window(title: String, accent: Color) { prog: DefaultWindow => Unit / { Syste
   with on[OutOfBounds].alert
   with on[RuntimeError].alert
   with on[WrongFormat].alert
-  // TODO: finalize { closeWindows }
+  with on[IOError].finalize { selfDestroy() }
+  with on[MissingValue].finalize { selfDestroy() }
+  with on[OutOfBounds].finalize { selfDestroy() }
+  with on[RuntimeError].finalize { selfDestroy() }
+  with on[WrongFormat].finalize { selfDestroy() }
   prog(DefaultWindow(window, font))
 }
