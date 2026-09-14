@@ -6,6 +6,8 @@ import ui/geometry
 import ui/compositor
 import system/calls
 
+import set
+
 val MARGIN = 10.0
 val TITLEBAR = 40.0
 val TITLETEXT = 24
@@ -13,11 +15,28 @@ val INSET = Vector(0.0, TITLEBAR)
 
 type EventKind {
   Resize(size: Vector)
-  Exit()
+  Click(position: Vector)
   Message(text: String)
+  Exit()
 }
 
+type Listen {
+  OnResize()
+  OnClick()
+  OnMessage()
+  OnExit()
+}
+
+def compare(a: Listen, b: Listen) = compareStringBytes(a.show(), b.show())
+
 effect event(ev: EventKind): Unit
+
+def from(ev: EventKind) = ev match {
+  case Resize(_)  => OnResize()
+  case Click(_)   => OnClick()
+  case Message(_) => OnMessage()
+  case Exit()     => OnExit()
+}
 
 type WindowId = Int
 record Window(id: WindowId)
@@ -33,11 +52,12 @@ interface WindowManager {
   def at(position: Vector): Window / Exception[MissingValue]
 }
 
-// TODO: at some point `spawn` should not return a Window (`do query`!)
+// TODO: at some point IPC should not be about windows at all
+// TODO: then, WindowManager effect shall be removed from Apps
 interface IPC {
   def spawn(app: App): Option[Window]
   def send(window: Window, event: EventKind): Unit
-  def receive(window: Window): EventKind // yield
+  def receive(window: Window, on: Set[Listen]): EventKind // yield
 }
 
 type App = (=> Unit / { System, WindowManager, IPC }) at {global, io}
@@ -56,7 +76,7 @@ def frame(geometry: Geometry, title: String, accent: Color, ?font: Font): Unit =
 
 def inBody(size: Vector, window: Window) = do context(window, INSET, size)
 
-def listen(?window: Window): Unit / { IPC, event } = {
-  do event(do receive(window))
-  listen()
+def listen(on: List[Listen], ?window: Window): Unit / { IPC, event } = {
+  do event(do receive(window, set::fromList(on, box compare)))
+  listen(on)
 }

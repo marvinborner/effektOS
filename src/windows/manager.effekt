@@ -140,20 +140,21 @@ def manager(?font: Font) { inputs: => Nothing / Input } { apps: { => Nothing / I
       if (not(focused?(window.id))) raise(m)
   }
 
+  // TODO: do not abstract?
   def handlers(): Nothing / IPC = {
     try inputs()
     with keyboard {
-      case Press(ch) => resume(())
+      case KeyboardEvent::Press(ch) => resume(())
     }
 
     with mouse {
-      case Click(left, middle, right) => {
+      case MouseEvent::Click(left, middle, right) => {
         if (left) leftClick()
         else if (right) rightClick()
         else action.set(NoAction())
         resume(())
       }
-      case Move(x, y) => {
+      case MouseEvent::Move(x, y) => {
         pointer.set(clamp(pointer.get + Vector(x, 0.0 - y), screen - cursor::size))
         do cursor(pointer.get)
         drag()

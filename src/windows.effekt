@@ -1,7 +1,7 @@
 import io/error
 
-import windows/compositor
 import windows/manager
+import windows/compositor
 import windows/scheduler
 import drivers
 
@@ -20,5 +20,8 @@ def start { inputs: => Nothing / Input }: Nothing / { Output, System } = {
 
   with compositor
   with def handlers = manager {inputs}
-  apps([ipc::app(true), team::app()]) { (app) => app() } {handlers}
+  apps([
+    ipc::app(true),
+    team::app()
+  ]) { (app) => app() } {handlers}
 }

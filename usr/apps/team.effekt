@@ -30,7 +30,7 @@ def start(): Unit / { System, WindowManager, IPC } = {
   do resize(window, image.size + INSET)
   draw(image.size)
 
-  try listen()
+  try listen([OnResize(), OnClick()])
   with event {
     case Resize(size) => {
       draw(size)

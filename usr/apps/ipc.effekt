@@ -24,7 +24,7 @@ def start(root?: Bool): Unit / { System, WindowManager, IPC } = {
     do dirty(window, area)
   }
 
-  try listen()
+  try listen([OnResize(), OnMessage(), OnExit()])
   with event {
     case Resize(size) => {
       other.foreach { m => do send(m, Message(s"${size.x.toInt.show}x${size.y.toInt.show}")) }
@@ -32,6 +32,7 @@ def start(root?: Bool): Unit / { System, WindowManager, IPC } = {
     }
     case Message(text) => resume(note("root is " ++ text))
     case Exit() => do destroy(window)
+    case _ => resume(())
   }
 }
 
