@@ -24,6 +24,7 @@ def start { inputs: => Nothing / Input }: Nothing / { Output, System } = {
     ipc::app(),
     ipc::app(),
     ipc::app(),
+    ipc::app(),
     team::app()
   ], box from) { app => (app.start)() } {handlers}
 }

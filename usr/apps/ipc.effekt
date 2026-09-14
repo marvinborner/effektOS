@@ -25,7 +25,9 @@ def start(): Unit / { System, WindowManager, Apps } = {
     do dirty(window, area)
   }
 
-  try listen([OnResize(), OnMessage(), OnExit()])
+  do resize(window, Vector(300.0, 150.0))
+
+  try listen([OnResize(), OnClick(), OnMessage(), OnExit()])
   with event {
     case Resize(size) => {
       val others = do query("IPC Demo")
@@ -35,6 +37,7 @@ def start(): Unit / { System, WindowManager, Apps } = {
       resume(())
     }
     case Message(text) => resume(draw(s"focused size: ${text}"))
+    case Click(position) => resume(alert(s"Click!"))
     case Exit() => do destroy(window)
     case _ => resume(())
   }

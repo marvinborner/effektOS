@@ -59,11 +59,15 @@ record App(start: (=> Unit / { System, WindowManager, Apps }) at {global, io})
 
 effect Apps = IPC[App, EventKind, Listen]
 
+def closeButton(size: Vector) = Rect(
+  Vector(size.x - TITLEBAR, 0.0) + MARGIN,
+  Vector(TITLEBAR, TITLEBAR) - MARGIN * 2.0
+)
+
 def frame(geometry: Geometry, title: String, accent: Color, ?font: Font): Unit = {
   val body = Rect(Vector(0.0, 0.0), geometry.size)
-  val bar = Rect(body.origin, Vector(body.size.x, TITLEBAR))
-  val button = Rect(body.origin + Vector(body.size.x - TITLEBAR, 0.0) + MARGIN,
-                    Vector(TITLEBAR, TITLEBAR) - MARGIN * 2.0)
+  val bar = Rect(Vector(0.0, 0.0), Vector(body.size.x, TITLEBAR))
+  val button = closeButton(body.size)
 
   geometry.fill(accent.fade(0.6))
   geometry.rectangle(bar, accent)

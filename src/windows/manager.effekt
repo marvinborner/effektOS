@@ -28,7 +28,7 @@ record Managed(
 
 type Action {
   NoAction();
-  Moving(window: WindowId, inside: Vector)
+  Moving(window: WindowId, relative: Vector)
   Resizing(window: WindowId)
 }
 
@@ -108,9 +108,9 @@ def manager(?font: Font) { inputs: => Nothing / Input } { apps: { => Nothing / A
 
   def drag(): Unit / Apps = action.get match {
     case NoAction() => ()
-    case Moving(id, inside) => lookup(id) match {
+    case Moving(id, relative) => lookup(id) match {
       case None() => action.set(NoAction())
-      case Some(m) => m.move(clamp(pointer.get - inside, screen - m.size))
+      case Some(m) => m.move(clamp(pointer.get - relative, screen - m.size))
     }
     case Resizing(id) => lookup(id) match {
       case None() => action.set(NoAction())
@@ -121,17 +121,24 @@ def manager(?font: Font) { inputs: => Nothing / Input } { apps: { => Nothing / A
     }
   }
 
-  def leftClick(): Unit = action.get match {
+  def leftClick(): Unit / Apps = action.get match {
     case Moving(_, _) => () // already moving
     case Resizing(_) => () // currently resizing
     case NoAction() =>
       with val window = topmostAt(pointer.get).foreach
       with val m = lookup(window.id).foreach
-      action.set(Moving(window.id, pointer.get - m.position))
       if (not(focused?(window.id))) raise(m)
+      val relative = pointer.get - m.position
+      if (relative.y < TITLEBAR) {
+        if (m.size.closeButton.contains?(relative))
+          do send(m.owner, Exit())
+        else
+          action.set(Moving(window.id, relative))
+      }
+      else do send(m.owner, Click(relative))
   }
 
-  def rightClick(): Unit = action.get match {
+  def rightClick(): Unit / Apps = action.get match {
     case Resizing(_) => () // already resizing
     case Moving(_, _) => () // currently moving
     case NoAction() =>
