@@ -12,11 +12,11 @@ import system/calls
 val AREA = Vector(200.0, 50.0)
 val NOTE = 20
 
-def start(root?: Bool) {ipc: IPC}: Unit / { System, WindowManager, receive } = {
+def start(root?: Bool): Unit / { System, WindowManager, IPC } = {
   with val DefaultWindow(window, font) = default::window(s"IPC Demo (root: ${root?.show})", colors::blue)
 
   val area = AREA.inBody(window)
-  val other = if (root?) ipc.spawn(app(false)) else None()
+  val other = if (root?) do spawn(app(false)) else None()
 
   def note(text: String): Unit = {
     area.geometry.rectangle(Rect(Vector(0.0, 0.0), AREA), colors::black)
@@ -27,7 +27,7 @@ def start(root?: Bool) {ipc: IPC}: Unit / { System, WindowManager, receive } = {
   try listen()
   with event {
     case Resize(size) => {
-      other.foreach { m => ipc.send(m, Message(s"${size.x.toInt.show}x${size.y.toInt.show}")) }
+      other.foreach { m => do send(m, Message(s"${size.x.toInt.show}x${size.y.toInt.show}")) }
       resume(())
     }
     case Message(text) => resume(note("root is " ++ text))
@@ -35,4 +35,4 @@ def start(root?: Bool) {ipc: IPC}: Unit / { System, WindowManager, receive } = {
   }
 }
 
-def app(root?: Bool): App = box { {ipc} => start(root?) {ipc} }
+def app(root?: Bool): App = box { start(root?) }

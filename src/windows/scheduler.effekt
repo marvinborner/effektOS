@@ -3,7 +3,7 @@ import map
 import ui/window
 
 /// `run` runs app with appropriate handlers (`System` and `WindowManager`, in particular)
-def apps(boot: List[App]) { run: (App) {IPC} => Unit / receive } { prog: {IPC} => Nothing }: Nothing = region scheduler {
+def apps(boot: List[App]) { run: (App) => Unit / IPC } { handlers: => Nothing / IPC }: Nothing = region scheduler {
   // k is reified, therefore not quite unlike a queue
   var queue: Map[WindowId, EventKind => Unit at {scheduler, run, global, io}] in scheduler = map::empty(box compareInt)
 
@@ -16,28 +16,29 @@ def apps(boot: List[App]) { run: (App) {IPC} => Unit / receive } { prog: {IPC} =
 
   def start(app: App): Option[Window] = {
     var started: Option[Window] in scheduler = None()
-    def ipc = new IPC {
-      def spawn(_app) = start(_app)
-      def send(window, event) = forward(window, event)
-    }
 
-    try run(app) {ipc}
-    with receive { window =>
-      started = Some(window)
-      queue = queue.put(window.id, box resume)
+    try run(app)
+    with IPC {
+      def spawn(_app) = resume(start(_app))
+      def send(window, event) = resume(forward(window, event))
+      def receive(window) = {
+        started = Some(window)
+        queue = queue.put(window.id, box resume)
+        // no resume!
+      }
     }
     started
   }
 
-  def ipc = new IPC {
-    def spawn(app) = start(app)
-    def send(window, event) = forward(window, event)
-  }
-
   boot.foreach { app =>
-    ipc.spawn(app)
+    start(app)
     ()
   }
 
-  prog {ipc}
+  try handlers()
+  with IPC {
+    def spawn(app) = resume(start(app))
+    def send(window, event) = resume(forward(window, event))
+    def receive(window) = <> // TODO ?
+  }
 }

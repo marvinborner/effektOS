@@ -22,9 +22,6 @@ effect event(ev: EventKind): Unit
 type WindowId = Int
 record Window(id: WindowId)
 
-/// aka `yield`
-effect receive(window: Window): EventKind
-
 interface WindowManager {
   def create(size: Vector, title: String, accent: Color): Window // no position!
   def size(window: Window): Vector / Exception[MissingValue]
@@ -40,9 +37,10 @@ interface WindowManager {
 interface IPC {
   def spawn(app: App): Option[Window]
   def send(window: Window, event: EventKind): Unit
+  def receive(window: Window): EventKind // yield
 }
 
-type App = ({IPC} => Unit / { System, WindowManager, receive }) at {global, io}
+type App = (=> Unit / { System, WindowManager, IPC }) at {global, io}
 
 def frame(geometry: Geometry, title: String, accent: Color, ?font: Font): Unit = {
   val body = Rect(Vector(0.0, 0.0), geometry.size)
@@ -58,7 +56,7 @@ def frame(geometry: Geometry, title: String, accent: Color, ?font: Font): Unit =
 
 def inBody(size: Vector, window: Window) = do context(window, INSET, size)
 
-def listen(?window: Window): Unit / { receive, event } = {
+def listen(?window: Window): Unit / { IPC, event } = {
   do event(do receive(window))
   listen()
 }

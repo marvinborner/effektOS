@@ -29,7 +29,7 @@ type Action {
   Resizing(window: WindowId)
 }
 
-def manager(?font: Font) { inputs: => Nothing / Input } { apps: { {IPC} => Nothing } => Nothing / WindowManager }: Nothing / Compositor = {
+def manager(?font: Font) { inputs: => Nothing / Input } { apps: { => Nothing / IPC } => Nothing / WindowManager }: Nothing / Compositor = {
   with on[MissingValue].panic()
 
   var counter = 0
@@ -105,7 +105,7 @@ def manager(?font: Font) { inputs: => Nothing / Input } { apps: { {IPC} => Nothi
     size
   }
 
-  def drag() {ipc: IPC}: Unit = action.get match {
+  def drag(): Unit / IPC = action.get match {
     case NoAction() => ()
     case Moving(id, inside) => lookup(id) match {
       case None() => action.set(NoAction())
@@ -115,7 +115,7 @@ def manager(?font: Font) { inputs: => Nothing / Input } { apps: { {IPC} => Nothi
       case None() => action.set(NoAction())
       case Some(m) => {
         val resized = m.resize(pointer.get - m.position)
-        ipc.send(m.window, Resize(resized))
+        do send(m.window, Resize(resized))
       }
     }
   }
@@ -140,7 +140,7 @@ def manager(?font: Font) { inputs: => Nothing / Input } { apps: { {IPC} => Nothi
       if (not(focused?(window.id))) raise(m)
   }
 
-  def handlers() {ipc: IPC}: Nothing = {
+  def handlers(): Nothing / IPC = {
     try inputs()
     with keyboard {
       case Press(ch) => resume(())
@@ -156,7 +156,7 @@ def manager(?font: Font) { inputs: => Nothing / Input } { apps: { {IPC} => Nothi
       case Move(x, y) => {
         pointer.set(clamp(pointer.get + Vector(x, 0.0 - y), screen - cursor::size))
         do cursor(pointer.get)
-        drag() {ipc}
+        drag()
         resume(())
       }
     }
