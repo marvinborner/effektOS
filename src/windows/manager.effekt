@@ -28,6 +28,8 @@ record Managed(
 
 type Action {
   NoAction();
+  Clicking(window: WindowId, relative: Vector)
+  Closing(window: WindowId)
   Moving(window: WindowId, relative: Vector)
   Resizing(window: WindowId)
 }
@@ -47,6 +49,8 @@ def manager(?font: Font) { inputs: => Nothing / Input } { apps: { => Nothing / A
 
   def lookup(id: WindowId): Option[Managed] = managed.get.get(id)
   def store(m: Managed): Unit = managed.map { ms => ms.put(m.window.id, m) }
+
+  // --- operations ---
 
   def focused?(window: WindowId): Bool = stack.get.headOption match {
     case Some(top) => top == window
@@ -106,8 +110,9 @@ def manager(?font: Font) { inputs: => Nothing / Input } { apps: { => Nothing / A
     }
   }
 
+  // --- event handling ---
+
   def drag(): Unit / Apps = action.get match {
-    case NoAction() => ()
     case Moving(id, relative) => lookup(id) match {
       case None() => action.set(NoAction())
       case Some(m) => m.move(clamp(pointer.get - relative, screen - m.size))
@@ -119,33 +124,59 @@ def manager(?font: Font) { inputs: => Nothing / Input } { apps: { => Nothing / A
         if (not(resized == m.size)) do send(m.owner, Resize(resized))
       }
     }
+    case _ => ()
   }
 
-  def leftClick(): Unit / Apps = action.get match {
-    case Moving(_, _) => () // already moving
-    case Resizing(_) => () // currently resizing
-    case NoAction() =>
+  def leftPress(): Unit / Apps = action.get match {
+    case NoAction() => {
       with val window = topmostAt(pointer.get).foreach
       with val m = lookup(window.id).foreach
       if (not(focused?(window.id))) raise(m)
       val relative = pointer.get - m.position
       if (relative.y < TITLEBAR) {
         if (m.size.closeButton.contains?(relative))
-          do send(m.owner, Exit())
+          action.set(Closing(window.id))
         else
           action.set(Moving(window.id, relative))
       }
-      else do send(m.owner, Click(relative))
+      else action.set(Clicking(window.id, relative))
+    }
+    case _ => ()
   }
 
-  def rightClick(): Unit / Apps = action.get match {
-    case Resizing(_) => () // already resizing
-    case Moving(_, _) => () // currently moving
-    case NoAction() =>
+  def leftRelease(): Unit / Apps = action.get match {
+    case Clicking(id, relative) => {
+      lookup(id) match {
+        case None() => ()
+        case Some(m) => do send(m.owner, Click(relative))
+      }
+      action.set(NoAction())
+    }
+    case Closing(id) => {
+      lookup(id) match {
+        case None() => ()
+        case Some(m) => if (m.size.closeButton.contains?(pointer.get - m.position))
+          do send(m.owner, Exit())
+      }
+      action.set(NoAction())
+    }
+    case Moving(_, _) => action.set(NoAction())
+    case _ => ()
+  }
+
+  def rightPress(): Unit / Apps = action.get match {
+    case NoAction() => {
       with val window = topmostAt(pointer.get).foreach
       with val m = lookup(window.id).foreach
       action.set(Resizing(window.id))
       if (not(focused?(window.id))) raise(m)
+    }
+    case _ => ()
+  }
+
+  def rightRelease(): Unit / Apps = action.get match {
+    case Resizing(_) => action.set(NoAction())
+    case _ => ()
   }
 
   def keypress(ch: Char): Unit / Apps = {
@@ -154,6 +185,8 @@ def manager(?font: Font) { inputs: => Nothing / Input } { apps: { => Nothing / A
     do send(m.owner, Keypress(ch))
   }
 
+  var leftClicked = false
+  var rightClicked = false
   def handlers(): Nothing / Apps = {
     try inputs()
     with keyboard {
@@ -162,9 +195,12 @@ def manager(?font: Font) { inputs: => Nothing / Input } { apps: { => Nothing / A
 
     with mouse {
       case MouseEvent::Click(left, middle, right) => {
-        if (left) leftClick()
-        else if (right) rightClick()
-        else action.set(NoAction())
+        if (left && not(leftClicked)) leftPress()
+        else if (not(left) && leftClicked) leftRelease()
+        if (right && not(rightClicked)) rightPress()
+        else if (not(right) && rightClicked) rightRelease()
+        leftClicked = left
+        rightClicked = right
         resume(())
       }
       case MouseEvent::Move(x, y) => {
@@ -180,6 +216,8 @@ def manager(?font: Font) { inputs: => Nothing / Input } { apps: { => Nothing / A
       resume(do compositor::redrawDirty())
     }
   }
+
+  // --- window requests ---
 
   try apps {handlers}
   with WindowManager {
@@ -224,6 +262,8 @@ def manager(?font: Font) { inputs: => Nothing / Input } { apps: { => Nothing / A
       stack.map { s => s.filter { w => w != window.id } }
       action.get match {
         case NoAction() => ()
+        case Clicking(id, _) => if (id == window.id) action.set(NoAction())
+        case Closing(id) => if (id == window.id) action.set(NoAction())
         case Moving(id, _) => if (id == window.id) action.set(NoAction())
         case Resizing(id) => if (id == window.id) action.set(NoAction())
       }
