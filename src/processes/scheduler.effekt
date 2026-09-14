@@ -8,6 +8,7 @@ def processes[Task, Message, Filter](boot: List[Task], filter: (Message) => Filt
     { run: (Task) => Unit / IPC[Task, Message, Filter] }
     { kernel: => Nothing / IPC[Task, Message, Filter] }: Nothing = region scheduler {
   val counter = SYSTEM.id.ref
+  // TODO: support list of resumptions via `fork`
   var queue: Map[ProcessId, (Set[Filter], Message => Unit at {scheduler, run, global, io})] in scheduler = map::empty(box compareInt)
 
   def forward(process: Process, message: Message): Unit = {

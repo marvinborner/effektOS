@@ -51,6 +51,7 @@ interface WindowManager {
   def remove(window: Window, context: Context): Unit / Exception[MissingValue]
   def dirty(window: Window, id: Context): Unit / Exception[MissingValue]
   def at(position: Vector): Window / Exception[MissingValue]
+  def query(title: String): List[Process]
 }
 
 // TODO: remove WindowManager effect from Apps (make it an app itself)

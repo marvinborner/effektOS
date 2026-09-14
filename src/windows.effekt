@@ -21,7 +21,9 @@ def start { inputs: => Nothing / Input }: Nothing / { Output, System } = {
   with compositor
   with def handlers = manager {inputs}
   processes([
-    ipc::app(true),
+    ipc::app(),
+    ipc::app(),
+    ipc::app(),
     team::app()
-  ], box from) { (app) => (app.start)() } {handlers}
+  ], box from) { app => (app.start)() } {handlers}
 }

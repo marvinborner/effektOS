@@ -225,5 +225,7 @@ def manager(?font: Font) { inputs: => Nothing / Input } { apps: { => Nothing / A
     }
 
     def at(position) = resume { topmostAt(position).value }
+
+    def query(title) = resume(managed.get.values.filter { m => m.title == title }.map { m => m.owner })
   }
 }

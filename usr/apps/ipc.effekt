@@ -10,31 +10,34 @@ import ui/compositor
 import system/calls
 import system/process
 
-val AREA = Vector(200.0, 50.0)
-val NOTE = 20
+val AREA = Vector(300.0, 50.0)
+val MESSAGE = 20
 
-def start(root?: Bool): Unit / { System, WindowManager, Apps } = {
-  with val DefaultWindow(window, font) = default::window(s"IPC Demo (root: ${root?.show})", colors::blue)
+def start(): Unit / { System, WindowManager, Apps } = {
+  val pid = do current()
+  with val DefaultWindow(window, font) = default::window(s"IPC Demo", colors::blue)
 
-  val area = AREA.inBody(window)
-  val other: Option[Process] = if (root?) Some(do spawn(app(false))) else None()
-
-  def note(text: String): Unit = {
-    area.geometry.rectangle(Rect(Vector(0.0, 0.0), AREA), colors::black)
-    area.geometry.write(Vector(MARGIN, MARGIN), NOTE, text, colors::white)
+  var area = AREA.inBody(window)
+  def draw(text: String): Unit = {
+    do remove(window, area)
+    area = AREA.inBody(window)
+    area.geometry.write(Vector(MARGIN, MARGIN), MESSAGE, text, colors::white)
     do dirty(window, area)
   }
 
   try listen([OnResize(), OnMessage(), OnExit()])
   with event {
     case Resize(size) => {
-      other.foreach { process => do send(process, Message(s"${size.x.toInt.show}x${size.y.toInt.show}")) }
+      val others = do query("IPC Demo")
+      others.foreach { process =>
+        do send(process, Message(s"${size.x.toInt.show}x${size.y.toInt.show}"))
+      }
       resume(())
     }
-    case Message(text) => resume(note("root is " ++ text))
+    case Message(text) => resume(draw(s"focused size: ${text}"))
     case Exit() => do destroy(window)
     case _ => resume(())
   }
 }
 
-def app(root?: Bool): App = App(box { start(root?) })
+def app(): App = App(box start)
