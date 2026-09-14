@@ -29,7 +29,7 @@ type Action {
   Resizing(window: WindowId)
 }
 
-def manager(?font: Font) { windows: => Nothing / { WindowManager, Input } }: Nothing / Compositor = {
+def manager(?font: Font) { inputs: => Nothing / Input } { apps: { {IPC} => Nothing } => Nothing / WindowManager }: Nothing / Compositor = {
   with on[MissingValue].panic()
 
   var counter = 0
@@ -90,20 +90,22 @@ def manager(?font: Font) { windows: => Nothing / { WindowManager, Input } }: Not
     }
   }
 
-  def resize(m: Managed, _size: Vector): Unit = {
+  // TODO: clip underlying contexts
+  def resize(m: Managed, _size: Vector): Vector = {
     val size = max(_size, Vector(50.0, 50.0))
-    // TODO: send resize event
     val frame = do freshContext(m.position, size)
     window::frame(frame.geometry, m.title, m.accent)
     do markDirty(frame.id)
     do compositor::destroy(m.frame.id)
+    // m.contexts.foreach { c => do compositor::destroy(c.id) } // TODO: m.contexts = []?
     managed.map { ms =>
       ms.put(m.window.id,
         Managed(m.window, m.position, size, m.title, m.accent, frame, m.contexts))
     }
+    size
   }
 
-  def drag(): Unit = action.get match {
+  def drag() {ipc: IPC}: Unit = action.get match {
     case NoAction() => ()
     case Moving(id, inside) => lookup(id) match {
       case None() => action.set(NoAction())
@@ -111,7 +113,10 @@ def manager(?font: Font) { windows: => Nothing / { WindowManager, Input } }: Not
     }
     case Resizing(id) => lookup(id) match {
       case None() => action.set(NoAction())
-      case Some(m) => m.resize(pointer.get - m.position)
+      case Some(m) => {
+        val resized = m.resize(pointer.get - m.position)
+        ipc.send(m.window, Resize(resized))
+      }
     }
   }
 
@@ -135,7 +140,30 @@ def manager(?font: Font) { windows: => Nothing / { WindowManager, Input } }: Not
       if (not(focused?(window.id))) raise(m)
   }
 
-  try windows()
+  def handlers() {ipc: IPC}: Nothing = {
+    try inputs()
+    with keyboard {
+      case Press(ch) => resume(())
+    }
+
+    with mouse {
+      case Click(left, middle, right) => {
+        if (left) leftClick()
+        else if (right) rightClick()
+        else action.set(NoAction())
+        resume(())
+      }
+      case Move(x, y) => {
+        pointer.set(clamp(pointer.get + Vector(x, 0.0 - y), screen - cursor::size))
+        do cursor(pointer.get)
+        drag() {ipc}
+        resume(())
+      }
+    }
+    with tick { resume(do compositor::redrawDirty()) }
+  }
+
+  try apps {handlers}
   with WindowManager {
     def create(size, title, accent) = {
       counter = counter + 1
@@ -152,7 +180,8 @@ def manager(?font: Font) { windows: => Nothing / { WindowManager, Input } }: Not
 
     def resize(window, size) = resume {
       val m = lookup(window.id).value
-      m.resize(size)
+      val resized = m.resize(size)
+      ()
     }
 
     def context(window, position, size) = resume {
@@ -184,24 +213,15 @@ def manager(?font: Font) { windows: => Nothing / { WindowManager, Input } }: Not
       }
     }
 
+    def remove(window, context) = resume {
+      val m = lookup(window.id).value
+      val updated = m.contexts.filter { c => c.id != context.id }
+      if (updated.size == m.contexts.size) // TODO
+        missingValue()
+      do compositor::destroy(context.id)
+      store(Managed(m.window, m.position, m.size, m.title, m.accent, m.frame, updated))
+    }
+
     def at(position) = resume { topmostAt(position).value }
   }
-  with keyboard {
-    case Press(ch) => resume(())
-  }
-  with mouse {
-    case Click(left, middle, right) => {
-      if (left) leftClick()
-      else if (right) rightClick()
-      else action.set(NoAction())
-      resume(())
-    }
-    case Move(x, y) => {
-      pointer.set(clamp(pointer.get + Vector(x, 0.0 - y), screen - cursor::size))
-      do cursor(pointer.get)
-      drag()
-      resume(())
-    }
-  }
-  with tick { resume(do compositor::redrawDirty()) }
 }

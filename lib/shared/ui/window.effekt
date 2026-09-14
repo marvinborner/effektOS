@@ -4,14 +4,26 @@ import ui/vector
 import ui/truetype
 import ui/geometry
 import ui/compositor
+import system/calls
 
 val MARGIN = 10.0
 val TITLEBAR = 40.0
 val TITLETEXT = 24
 val INSET = Vector(0.0, TITLEBAR)
 
+type EventKind {
+  Resize(size: Vector)
+  Exit()
+  Message(text: String)
+}
+
+effect event(ev: EventKind): Unit
+
 type WindowId = Int
 record Window(id: WindowId)
+
+/// aka `yield`
+effect receive(window: Window): EventKind
 
 interface WindowManager {
   def create(size: Vector, title: String, accent: Color): Window // no position!
@@ -19,9 +31,18 @@ interface WindowManager {
   def resize(window: Window, size: Vector): Unit / Exception[MissingValue]
   def context(window: Window, position: Vector, size: Vector): Context / Exception[MissingValue]
   def destroy(window: Window): Unit / Exception[MissingValue]
+  def remove(window: Window, context: Context): Unit / Exception[MissingValue]
   def dirty(window: Window, id: Context): Unit / Exception[MissingValue]
   def at(position: Vector): Window / Exception[MissingValue]
 }
+
+// TODO: at some point `spawn` should not return a Window (`do query`!)
+interface IPC {
+  def spawn(app: App): Option[Window]
+  def send(window: Window, event: EventKind): Unit
+}
+
+type App = ({IPC} => Unit / { System, WindowManager, receive }) at {global, io}
 
 def frame(geometry: Geometry, title: String, accent: Color, ?font: Font): Unit = {
   val body = Rect(Vector(0.0, 0.0), geometry.size)
@@ -36,3 +57,8 @@ def frame(geometry: Geometry, title: String, accent: Color, ?font: Font): Unit =
 }
 
 def inBody(size: Vector, window: Window) = do context(window, INSET, size)
+
+def listen(?window: Window): Unit / { receive, event } = {
+  do event(do receive(window))
+  listen()
+}

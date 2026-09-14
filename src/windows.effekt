@@ -2,6 +2,7 @@ import io/error
 
 import windows/compositor
 import windows/manager
+import windows/scheduler
 import drivers
 
 import ui/window
@@ -9,12 +10,8 @@ import ui/truetype
 import system/calls
 
 import apps/team
+import apps/ipc
 // import apps/kalkulator
-
-def apps(): Unit / { System, WindowManager } = {
-  team::start()
-  team::start()
-}
 
 def start { inputs: => Nothing / Input }: Nothing / { Output, System } = {
   with on[WrongFormat].panic
@@ -22,8 +19,6 @@ def start { inputs: => Nothing / Input }: Nothing / { Output, System } = {
   val font = load("/res/fonts/DejaVuSans.ttf")
 
   with compositor
-  with manager
-
-  apps()
-  inputs()
+  with def handlers = manager {inputs}
+  apps([ipc::app(true), team::app()]) { (app) {ipc} => app {ipc} } {handlers}
 }

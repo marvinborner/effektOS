@@ -1,0 +1,38 @@
+import ui/rect
+import ui/pixel
+import ui/alert
+import ui/vector
+import ui/window
+import ui/default
+import ui/truetype
+import ui/geometry
+import ui/compositor
+import system/calls
+
+val AREA = Vector(200.0, 50.0)
+val NOTE = 20
+
+def start(root?: Bool) {ipc: IPC}: Unit / { System, WindowManager, receive } = {
+  with val DefaultWindow(window, font) = default::window(s"IPC Demo (root: ${root?.show})", colors::blue)
+
+  val area = AREA.inBody(window)
+  val other = if (root?) ipc.spawn(app(false)) else None()
+
+  def note(text: String): Unit = {
+    area.geometry.rectangle(Rect(Vector(0.0, 0.0), AREA), colors::black)
+    area.geometry.write(Vector(MARGIN, MARGIN), NOTE, text, colors::white)
+    do dirty(window, area)
+  }
+
+  try listen()
+  with event {
+    case Resize(size) => {
+      other.foreach { m => ipc.send(m, Message(s"${size.x.toInt.show}x${size.y.toInt.show}")) }
+      resume(())
+    }
+    case Message(text) => resume(note("root is " ++ text))
+    case Exit() => do destroy(window)
+  }
+}
+
+def app(root?: Bool): App = box { {ipc} => start(root?) {ipc} }

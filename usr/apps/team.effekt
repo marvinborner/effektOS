@@ -11,14 +11,34 @@ import system/filesystem
 
 val TEAM = "/res/group_jumping.bmp"
 
-def start(): Unit / { System, WindowManager } = {
+def start() {ipc: IPC}: Unit / { System, WindowManager, receive } = {
   with val DefaultWindow(window, font) = default::window("Effekt Team", colors::green)
 
   val image = do open(TEAM).contents.bmp::decode()
-  val size = image.size
-  do resize(window, size + INSET)
+  val body: Ref[Option[Context]] = None().ref
 
-  val area = size.inBody(window)
-  area.geometry.bmp::render(image, Vector(0.0, 0.0))
-  do dirty(window, area)
+  var area = Vector(0.0, 0.0).inBody(window)
+
+  def draw(size: Vector): Unit = {
+    do remove(window, area)
+    area = size.inBody(window)
+    area.geometry.bmp::render(image, (size - image.size - INSET) / 2.0)
+    body.set(Some(area))
+    do dirty(window, area)
+  }
+
+  do resize(window, image.size + INSET)
+  draw(image.size)
+
+  try listen()
+  with event {
+    case Resize(size) => {
+      draw(size)
+      resume(())
+    }
+    case Exit() => do destroy(window)
+    case _ => resume(())
+  }
 }
+
+def app(): App = box start

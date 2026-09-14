@@ -1,0 +1,43 @@
+import map
+
+import ui/window
+
+/// `run` runs app with appropriate handlers (`System` and `WindowManager`, in particular)
+def apps(boot: List[App]) { run: (App) {IPC} => Unit / receive } { prog: {IPC} => Nothing }: Nothing = region scheduler {
+  // k is reified, therefore not quite unlike a queue
+  var queue: Map[WindowId, EventKind => Unit at {scheduler, run, global, io}] in scheduler = map::empty(box compareInt)
+
+  def forward(window: Window, event: EventKind): Unit = {
+    // TODO: never drop (inbox)
+    with val app = queue.get(window.id).foreach
+    queue = queue.delete(window.id)
+    app(event)
+  }
+
+  def start(app: App): Option[Window] = {
+    var started: Option[Window] in scheduler = None()
+    def ipc = new IPC {
+      def spawn(_app) = start(_app)
+      def send(window, event) = forward(window, event)
+    }
+
+    try run(app) {ipc}
+    with receive { window =>
+      started = Some(window)
+      queue = queue.put(window.id, box resume)
+    }
+    started
+  }
+
+  def ipc = new IPC {
+    def spawn(app) = start(app)
+    def send(window, event) = forward(window, event)
+  }
+
+  boot.foreach { app =>
+    ipc.spawn(app)
+    ()
+  }
+
+  prog {ipc}
+}
