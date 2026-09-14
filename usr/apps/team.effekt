@@ -27,10 +27,10 @@ def start(): Unit / { System, WindowManager, Apps } = {
     do dirty(window, area)
   }
 
-  do resize(window, image.size + INSET)
+  do resize(window, image.size)
   draw(image.size)
 
-  try listen([OnResize(), OnClick()])
+  try listen([OnResize(), OnClick(), OnExit()])
   with event {
     case Resize(size) => {
       draw(size)

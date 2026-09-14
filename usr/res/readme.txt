@@ -1,0 +1,2 @@
+- Effekt logo by Katka Svobodová (https://twitter.com/libertykatka/status/1783877574633939260)
+- Group picture by Jonathan Brachthäuser (https://pl.cs.uni-tuebingen.de/brachthaeuser/)

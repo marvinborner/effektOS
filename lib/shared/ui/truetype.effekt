@@ -73,6 +73,15 @@ def draw(on: Geometry, glyph: ByteArray, at: Vector, color: Color): Unit = {
   source = source + 1
 }
 
+def width(text: String, size: Int, ?font: Font): Double = {
+  val info = font.info
+  var pen = 0.0
+  for[Char] { each(text) } { character =>
+    pen = pen + internal::step(info, size, character.toInt)
+  }
+  pen
+}
+
 /// draws `text` with height `size` at `at`
 def write(on: Geometry, at: Vector, size: Int, text: String, color: Color, ?font: Font): Unit = {
   val info = font.info

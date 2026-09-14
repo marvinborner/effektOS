@@ -16,14 +16,18 @@ val INSET = Vector(0.0, TITLEBAR)
 
 type EventKind {
   Resize(size: Vector)
+  Keypress(ch: Char)
   Click(position: Vector)
+  Tick()
   Message(text: String)
   Exit()
 }
 
 type Listen {
   OnResize()
+  OnKeypress()
   OnClick()
+  OnTick()
   OnMessage()
   OnExit()
 }
@@ -33,10 +37,12 @@ def compare(a: Listen, b: Listen) = compareStringBytes(a.show(), b.show())
 effect event(ev: EventKind): Unit
 
 def from(ev: EventKind) = ev match {
-  case Resize(_)  => OnResize()
-  case Click(_)   => OnClick()
-  case Message(_) => OnMessage()
-  case Exit()     => OnExit()
+  case Resize(_)   => OnResize()
+  case Keypress(_) => OnKeypress()
+  case Click(_)    => OnClick()
+  case Message(_)  => OnMessage()
+  case Tick()      => OnTick()
+  case Exit()      => OnExit()
 }
 
 type WindowId = Int

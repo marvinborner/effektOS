@@ -11,12 +11,23 @@ def processes[Task, Message, Filter](boot: List[Task], filter: (Message) => Filt
   // TODO: support list of resumptions via `fork`
   var queue: Map[ProcessId, (Set[Filter], Message => Unit at {scheduler, run, global, io})] in scheduler = map::empty(box compareInt)
 
-  def forward(process: Process, message: Message): Unit = {
+  def forward(process: Process, message: Message) = {
     // TODO: never drop (inbox)
-    with val (filters, blocked) = queue.get(process.id).foreach
+    with val (filters, yielded) = queue.get(process.id).foreach
     if (filters.contains(filter(message))) {
       queue = queue.delete(process.id)
-      blocked(message)
+      yielded(message)
+    }
+  }
+
+  // TODO: more efficient broadcast (e.g. query by filter)
+  def broadcast(message: Message) = {
+    queue.foreach { (pid, value) =>
+      val (filters, yielded) = value
+      if (filters.set::contains(filter(message))) {
+        queue = queue.delete(pid)
+        yielded(message)
+      }
     }
   }
 
@@ -29,6 +40,7 @@ def processes[Task, Message, Filter](boot: List[Task], filter: (Message) => Filt
       def current() = resume(Process(pid))
       def spawn(task) = resume(start(task))
       def send(process, message) = resume(forward(process, message))
+      def sendAll(message) = resume(broadcast(message)) // TODO: permissions
       def receive(on) = {
         queue = queue.put(pid, (on, box resume))
         // no resume!
@@ -47,6 +59,7 @@ def processes[Task, Message, Filter](boot: List[Task], filter: (Message) => Filt
     def current() = resume(SYSTEM)
     def spawn(task) = resume(start(task))
     def send(process, message) = resume(forward(process, message))
+    def sendAll(message) = resume(broadcast(message))
     def receive(on) = <> // TODO: shall the kernel ever yield?
   }
 }

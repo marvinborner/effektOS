@@ -1,0 +1,42 @@
+import io/error
+
+import ui/pixel
+import ui/vector
+import ui/window
+import ui/truetype
+import ui/geometry
+import ui/compositor
+import system/calls
+import system/process
+
+val TEXT = 20
+val SIZE = 200.0
+
+def start(): Unit / { System, WindowManager, Apps } = {
+  // no default::window, due to potential for infinite alerts!
+  with on[IOError].panic
+  with on[MissingValue].panic
+  with on[WrongFormat].panic
+  val font = load("/res/fonts/DejaVuSans.ttf")
+  val window = create(Vector(SIZE, SIZE), "Alert", colors::red)
+
+  var area = Vector(0.0, 0.0).inBody(window)
+  def draw(message: String) = {
+    do remove(window, area)
+    val textWidth = max(message.width(TEXT), SIZE)
+    val size = Vector(textWidth + 2.0 * MARGIN, TEXT.toDouble + 2.0 * MARGIN)
+    do resize(window, size + INSET)
+    area = size.inBody(window)
+    area.geometry.write(Vector(MARGIN, MARGIN), TEXT, message, colors::black)
+    do dirty(window, area)
+  }
+
+  try listen([OnMessage(), OnExit()])
+  with event {
+    case Message(message) => resume(draw(message))
+    case Exit() => do destroy(window)
+    case _ => resume(())
+  }
+}
+
+def app(): App = App(box start)

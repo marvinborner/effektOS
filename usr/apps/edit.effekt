@@ -1,0 +1,39 @@
+import ui/pixel
+import ui/vector
+import ui/window
+import ui/default
+import ui/truetype
+import ui/geometry
+import ui/compositor
+import system/calls
+import system/process
+
+val TEXT = 20
+val SIZE = 200.0
+
+def start(): Unit / { System, WindowManager, Apps } = {
+  with val DefaultWindow(window, font) = default::window("Edit", colors::cyan)
+
+  var area = Vector(0.0, 0.0).inBody(window)
+  var text = ""
+  def append(ch: Char) = {
+    text = text ++ ch.show
+    do remove(window, area)
+    val textWidth = max(text.width(TEXT), SIZE)
+    val size = Vector(textWidth + 2.0 * MARGIN, TEXT.toDouble + 2.0 * MARGIN)
+    do resize(window, size + INSET)
+    area = size.inBody(window)
+    area.geometry.write(Vector(MARGIN, MARGIN), TEXT, text, colors::black)
+    do dirty(window, area)
+  }
+
+  try listen([OnKeypress(), OnExit()])
+  with event {
+    case Keypress(ch) => resume(append(ch))
+    case Exit() => do destroy(window)
+    case _ => resume(())
+  }
+}
+
+def app(): App = App(box start)
+

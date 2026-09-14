@@ -148,10 +148,16 @@ def manager(?font: Font) { inputs: => Nothing / Input } { apps: { => Nothing / A
       if (not(focused?(window.id))) raise(m)
   }
 
+  def keypress(ch: Char): Unit / Apps = {
+    with val window = topmostAt(pointer.get).foreach
+    with val m = lookup(window.id).foreach
+    do send(m.owner, Keypress(ch))
+  }
+
   def handlers(): Nothing / Apps = {
     try inputs()
     with keyboard {
-      case KeyboardEvent::Press(ch) => resume(())
+      case KeyboardEvent::Press(ch) => resume(keypress(ch))
     }
 
     with mouse {
@@ -170,6 +176,7 @@ def manager(?font: Font) { inputs: => Nothing / Input } { apps: { => Nothing / A
 
     with tick {
       drag()
+      do sendAll(Tick())
       resume(do compositor::redrawDirty())
     }
   }

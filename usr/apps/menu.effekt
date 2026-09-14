@@ -1,0 +1,75 @@
+import ui/rect
+import ui/pixel
+import ui/vector
+import ui/window
+import ui/default
+import ui/truetype
+import ui/geometry
+import ui/compositor
+import system/calls
+import system/process
+
+import apps/ipc
+import apps/clock
+import apps/edit
+import apps/team
+
+val BOX = 96.0
+val LABEL = 18
+
+record Entry(label: String, app: App)
+
+val ENTRIES = [
+  Entry("IPC", ipc::app()),
+  Entry("CLOCK", clock::app()),
+  Entry("EDIT", edit::app()),
+  Entry("TEAM", team::app())
+]
+
+def slot(index: Int): Rect =
+  Rect(Vector(MARGIN + (index.toDouble * (BOX + MARGIN)), MARGIN), Vector(BOX, BOX))
+
+def start(): Unit / { System, WindowManager, Apps } = {
+  with val DefaultWindow(window, font) = default::window("App Menu", colors::slate)
+
+  val initial = Vector(MARGIN + (ENTRIES.size.toDouble * (BOX + MARGIN)), BOX + (MARGIN * 2.0))
+
+  var area = initial.inBody(window)
+  def draw(size: Vector) = {
+    do remove(window, area)
+    area = size.inBody(window)
+
+    ENTRIES.foreachIndex { (index, entry) =>
+      val square = slot(index)
+      area.geometry.rectangle(Rect(square.origin, square.size), colors::magenta)
+      area.geometry.write(
+        square.origin + Vector(
+          (BOX - entry.label.width(LABEL)) / 2.0,
+          (BOX - LABEL.toDouble) / 2.0),
+        LABEL, entry.label, colors::white)
+    }
+
+    do dirty(window, area)
+  }
+
+  do resize(window, initial + INSET)
+  draw(initial)
+
+  try listen([OnResize(), OnClick(), OnExit()])
+  with event {
+    case Resize(size) => resume(draw(size - INSET))
+    case Click(position) => {
+      ENTRIES.foreachIndex { (index, entry) =>
+        if (slot(index).contains?(position)) {
+          do spawn(entry.app)
+          ()
+        }
+      }
+      resume(())
+    }
+    case Exit() => do destroy(window)
+    case _ => resume(())
+  }
+}
+
+def app(): App = App(box start)

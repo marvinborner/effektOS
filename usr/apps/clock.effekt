@@ -1,0 +1,37 @@
+import ui/pixel
+import ui/vector
+import ui/window
+import ui/default
+import ui/truetype
+import ui/geometry
+import ui/compositor
+import system/calls
+import system/process
+
+val TEXT = 50
+
+def start(): Unit / { System, WindowManager, Apps } = {
+  with val DefaultWindow(window, font) = default::window("Clock", colors::yellow)
+  var time = 0
+
+  var area = Vector(0.0, 0.0).inBody(window)
+  def tick() = {
+    val text = s"${time.show} ticks"
+    time = time + 1
+    do remove(window, area)
+    val size = Vector(text.width(TEXT) + 2.0 * MARGIN, TEXT.toDouble + 2.0 * MARGIN)
+    do resize(window, size + INSET)
+    area = size.inBody(window)
+    area.geometry.write(Vector(MARGIN, MARGIN), TEXT, text, colors::black)
+    do dirty(window, area)
+  }
+
+  try listen([OnTick(), OnExit()])
+  with event {
+    case Tick() => resume(tick())
+    case Exit() => do destroy(window)
+    case _ => resume(())
+  }
+}
+
+def app(): App = App(box start)

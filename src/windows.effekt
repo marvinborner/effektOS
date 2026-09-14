@@ -9,9 +9,8 @@ import ui/window
 import ui/truetype
 import system/calls
 
-import apps/team
-import apps/ipc
-// import apps/kalkulator
+import apps/menu
+import apps/clock
 
 def start { inputs: => Nothing / Input }: Nothing / { Output, System } = {
   with on[WrongFormat].panic
@@ -21,10 +20,7 @@ def start { inputs: => Nothing / Input }: Nothing / { Output, System } = {
   with compositor
   with def handlers = manager {inputs}
   processes([
-    ipc::app(),
-    ipc::app(),
-    ipc::app(),
-    ipc::app(),
-    team::app()
+    menu::app(),
+    clock::app()
   ], box from) { app => (app.start)() } {handlers}
 }

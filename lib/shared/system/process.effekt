@@ -9,5 +9,6 @@ interface IPC[Task, Message, Filter] {
   def current(): Process
   def spawn(task: Task): Process
   def send(process: Process, message: Message): Unit
+  def sendAll(message: Message): Unit
   def receive(on: Set[Filter]): Message // yield
 }

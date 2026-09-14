@@ -11,7 +11,7 @@ import system/calls
 import system/process
 
 val AREA = Vector(300.0, 50.0)
-val MESSAGE = 20
+val MESSAGE = 30
 
 def start(): Unit / { System, WindowManager, Apps } = {
   val pid = do current()
@@ -21,7 +21,7 @@ def start(): Unit / { System, WindowManager, Apps } = {
   def draw(text: String): Unit = {
     do remove(window, area)
     area = AREA.inBody(window)
-    area.geometry.write(Vector(MARGIN, MARGIN), MESSAGE, text, colors::white)
+    area.geometry.write(Vector(MARGIN, MARGIN), MESSAGE, text, colors::black)
     do dirty(window, area)
   }
 
