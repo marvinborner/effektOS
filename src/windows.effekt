@@ -11,6 +11,7 @@ import system/calls
 
 import apps/menu
 import apps/clock
+import apps/kalkulator
 
 def start { inputs: => Nothing / Input }: Nothing / { Output, System } = {
   with on[WrongFormat].panic
@@ -21,6 +22,7 @@ def start { inputs: => Nothing / Input }: Nothing / { Output, System } = {
   with def handlers = manager {inputs}
   processes([
     menu::app(),
-    clock::app()
+    clock::app(),
+    kalkulator::app()
   ], box from) { app => (app.start)() } {handlers}
 }

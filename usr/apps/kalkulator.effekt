@@ -1,0 +1,181 @@
+import utils
+import string
+import scanner
+
+import ui/rect
+import ui/pixel
+import ui/vector
+import ui/window
+import ui/layout
+import ui/default
+import ui/truetype
+import ui/geometry
+import ui/compositor
+import system/calls
+import system/process
+
+type Operation {
+  Add()
+  Subtract()
+  Multiply()
+  Divide()
+  Equals()
+}
+
+type Event {
+  Digit(value: Int)
+  Point()
+  Operator(operation: Operation)
+  Invert()
+  Percent()
+  Delete()
+  Clear()
+}
+
+interface Model {
+  def digit(value: Int): Unit
+  def point(): Unit
+  def operator(operation: Operation): Unit
+  def invert(): Unit
+  def percent(): Unit
+  def delete(): Unit
+  def clear(): Unit
+  def display(): String
+}
+
+def dispatch(signal: Event): Unit / Model = signal match {
+  case Digit(value)     => do digit(value)
+  case Point()          => do point()
+  case Operator(action) => do operator(action)
+  case Invert()         => do invert()
+  case Percent()        => do percent()
+  case Delete()         => do delete()
+  case Clear()          => do clear()
+}
+
+// --- view ---
+
+val SCREEN = 34
+val NDIGITS = 12
+
+def screen() =
+  with background
+  label(do display(), SCREEN, align::right)
+
+def keypad() = grid(4) {
+  button(Clear(), "C")
+  button(Delete(), "<")
+  button(Percent(), "%")
+  button(Operator(Divide()), "/")
+
+  button(Digit(7), "7")
+  button(Digit(8), "8")
+  button(Digit(9), "9")
+  button(Operator(Multiply()), "x")
+
+  button(Digit(4), "4")
+  button(Digit(5), "5")
+  button(Digit(6), "6")
+  button(Operator(Subtract()), "-")
+
+  button(Digit(1), "1")
+  button(Digit(2), "2")
+  button(Digit(3), "3")
+  button(Operator(Add()), "+")
+
+  button(Invert(), "+/-")
+  button(Digit(0), "0")
+  button(Point(), ".")
+  button(Operator(Equals()), "=")
+}
+
+def view(): Unit / { place, canvas, click[Event], Colors, Sizes, Model } = {
+  with padded
+  with flow(Vertical())
+  screen()
+  keypad()
+}
+
+// --- model ---
+
+def evaluate(left: Double, operation: Operation, right: Double): Double = operation match {
+  case Add()      => left + right
+  case Subtract() => left - right
+  case Multiply() => left * right
+  case Divide()   => left / right
+  case Equals()   => right
+}
+
+def calculator[R] { prog: => R / Model }: R = {
+  var input = "0"
+  var result = 0.0
+  var pending: Option[(Operation, Double)] = None()
+
+  def read(): Double = if (input == "") result else parse(input)
+
+  def apply(operation: Operation): Unit = {
+    result = pending match {
+      case None() => read()
+      case Some((previous, arg)) => evaluate(arg, previous, read())
+    }
+    input = ""
+    pending = operation match {
+      case Equals() => None()
+      case _ => Some((operation, result))
+    }
+  }
+
+  try prog()
+  with Model {
+    def digit(value) = resume(
+      if (input == "" || input == "0") input = value.show
+      else if (input == "-0") input = "-" ++ value.show
+      else if (input.length < NDIGITS) input = input ++ value.show)
+
+    def point() = resume(
+      if (input == "") input = "0."
+      else if (input.indexOf(".").isEmpty) input = input ++ ".")
+
+    def operator(operation) = resume(apply(operation))
+
+    def invert() = resume(
+      if (input == "") result = 0.0 - result
+      else if (input.startsWith("-")) input = input.substring(1)
+      else input = "-" ++ input)
+
+    def percent() = {
+      result = read() / 100.0
+      input = ""
+      resume(())
+    }
+
+    def delete() = resume(
+      if (input.length <= 1) input = "0"
+      else input = input.substring(0, input.length - 1))
+
+    def clear() = {
+      input = "0"
+      result = 0.0
+      pending = None()
+      resume(())
+    }
+
+    def display() = resume(if (input == "") result.show else input)
+  }
+}
+
+def parse(text: String): Double = string::feed[Double](text) {
+  with returning::peeking[Char, Double]
+  optionally[Double] { readDouble() }.getOrElse { 0.0 }
+}
+
+def start(): Unit / { System, WindowManager, Apps } = {
+  with val DefaultWindow(window, font) = default::window("Kalkulator", colors::slate)
+  with colors(text = colors::white, background = colors::slate.fade(0.3))
+  with sizes(fontSize = 24, padding = 12.0, gap = 6.0)
+  with calculator
+  with layouting(window) { signal => dispatch(signal) }
+  view()
+}
+
+def app(): App = App(box start)

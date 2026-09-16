@@ -32,6 +32,10 @@ REQUEST static volatile struct limine_stack_size_request stack_size_request = {
 	.stack_size = 0x8000000 // 128MB
 };
 
+#define STB_SPRINTF_IMPLEMENTATION
+#define STB_SPRINTF_DECORATE(name) name
+#include "../baremetal/stb_sprintf.h"
+
 #include "../baremetal/heap.c"
 #include "../baremetal/memory.c"
 

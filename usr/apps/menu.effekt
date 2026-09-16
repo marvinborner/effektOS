@@ -13,6 +13,7 @@ import apps/ipc
 import apps/clock
 import apps/edit
 import apps/team
+import apps/kalkulator
 
 val BOX = 96.0
 val LABEL = 18
@@ -23,7 +24,8 @@ val ENTRIES = [
   Entry("IPC", ipc::app()),
   Entry("CLOCK", clock::app()),
   Entry("EDIT", edit::app()),
-  Entry("TEAM", team::app())
+  Entry("TEAM", team::app()),
+  Entry("KALK", kalkulator::app())
 ]
 
 def slot(index: Int): Rect =

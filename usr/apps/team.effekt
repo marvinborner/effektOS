@@ -9,7 +9,7 @@ import ui/compositor
 import system/calls
 import system/filesystem
 
-val TEAM = "/res/grop_jumping.bmp"
+val TEAM = "/res/group_jumping.bmp"
 
 def start(): Unit / { System, WindowManager, Apps } = {
   with val DefaultWindow(window, font) = default::window("Effekt Team", colors::green)

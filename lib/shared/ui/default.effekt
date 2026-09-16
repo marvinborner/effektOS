@@ -13,6 +13,7 @@ record DefaultWindow(window: Window, font: Font)
 /// errors handled via alerts by default (can be overwritten, of course)
 effect Alerts = { Exception[IOError], Exception[MissingValue], Exception[OutOfBounds], Exception[RuntimeError], Exception[WrongFormat] }
 
+// TODO: fix self destruction
 def selfDestroy(): Unit / Apps = {
   val process = do current()
   do send(process, Exit())

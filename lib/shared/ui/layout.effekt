@@ -1,0 +1,215 @@
+import ui/rect
+import ui/pixel
+import ui/vector
+import ui/window
+import ui/truetype
+import ui/geometry
+import ui/compositor
+import system/calls
+import system/process
+
+record Canvas(geometry: Geometry, font: Font)
+
+effect allocate(size: Vector): Option[Rect]
+effect canvas(): Canvas
+effect click[Ev](area: Rect, event: Ev): Unit // TODO: more events
+
+namespace align {
+  val center = Vector(0.5, 0.5)
+  val right = Vector(1.0, 0.5)
+}
+
+// --- sizes ---
+
+effect fontSize(): Int
+effect padding(): Double
+effect gap(): Double
+effect Sizes = { fontSize, padding, gap }
+
+def fontSize[R](fontSize: Int) { prog: => R / fontSize }: R =
+  try prog() with fontSize { resume(fontSize) }
+
+def sizes[R](fontSize: Int, padding: Double, gap: Double) { prog: => R / Sizes }: R =
+  try prog()
+  with fontSize { resume(fontSize) }
+  with padding { resume(padding) }
+  with gap { resume(gap) }
+
+// --- colors ---
+
+effect backgroundColor(): Color
+effect textColor(): Color
+effect Colors = { backgroundColor, textColor }
+
+def backgroundColor[R](background: Color) { prog: => R / backgroundColor }: R =
+  try prog() with backgroundColor { resume(background) }
+
+def textColor[R](text: Color) { prog: => R / textColor }: R =
+  try prog() with textColor { resume(text) }
+
+def colors[R](text: Color, background: Color) { prog: => R / Colors }: R =
+  try prog()
+  with backgroundColor { resume(background) }
+  with textColor { resume(text) }
+
+// --- size allocation ---
+
+def element(size: Vector) { draw: Rect => Unit }: Unit / allocate =
+  do allocate(size) match {
+    case None() => ()
+    case Some(area) => draw(area)
+  }
+
+def allocations { content: => Unit / allocate }: List[Vector] = {
+  val asked: Ref[List[Vector]] = Nil().ref
+  try content() with allocate { size =>
+    asked.set(Cons(size, asked.get))
+    resume(None())
+  }
+  asked.get.reverse
+}
+
+def bounds { content: => Unit / allocate }: Vector =
+  allocations { content }.foldLeft(Vector(0.0, 0.0)) { (a, b) => max(a, b) }
+
+def arrange(areas: List[Rect]) { content: => Unit / allocate }: Unit = {
+  val queue = areas.ref
+  try content() with allocate { _size =>
+    resume(queue.get match {
+      case Nil() => None()
+      case Cons(area, rest) => { queue.set(rest); Some(area) }
+    })
+  }
+}
+
+// --- containers ---
+
+type Axis {
+  Horizontal()
+  Vertical()
+}
+
+def along(axis: Axis, v: Vector): Double = axis match {
+  case Horizontal() => v.x
+  case Vertical() => v.y
+}
+
+def across(axis: Axis, v: Vector): Double = axis match {
+  case Horizontal() => v.y
+  case Vertical() => v.x
+}
+
+def vector(axis: Axis, length: Double, breadth: Double): Vector = axis match {
+  case Horizontal() => Vector(length, breadth)
+  case Vertical() => Vector(breadth, length)
+}
+
+def flow(axis: Axis) { content: => Unit / allocate }: Unit / { allocate, Sizes } = {
+  val children = allocations { content }
+  val gaps = do gap() * max(0, children.size - 1).toDouble
+  val length = children.foldLeft(gaps) { (sum, child) => sum + axis.along(child) }
+  val breadth = children.foldLeft(0.0) { (widest, child) => max(widest, axis.across(child)) }
+  with val area = element(axis.vector(length, breadth))
+  val slack = (axis.along(area.size) - length) / max(1.0, children.size.toDouble)
+  var at = axis.along(area.origin)
+  arrange(children.map { child =>
+    val size = axis.along(child) + slack
+    val slot = Rect(axis.vector(at, axis.across(area.origin)),
+                    axis.vector(size, axis.across(area.size)))
+    at = at + size + do gap()
+    slot
+  }) { content }
+}
+
+def grid(columns: Int) { content: => Unit / allocate }: Unit / { allocate, Sizes } = {
+  val gap = do gap()
+  val children = allocations { content }
+  val span = Vector(columns.toDouble, (((children.size + columns) - 1) / columns).toDouble)
+  val gaps = (span - 1.0) * gap
+  val cell = children.foldLeft(Vector(0.0, 0.0)) { (a, b) => max(a, b) }
+  with val area = element((cell * span) + gaps)
+  val size = (area.size - gaps) / span
+  arrange(children.mapWithIndex { (index, _) =>
+    val at = Vector(index.mod(columns).toDouble, (index / columns).toDouble)
+    Rect(area.origin + (at * (size + gap)), size)
+  }) { content }
+}
+
+def padded { content: => Unit / allocate }: Unit / { allocate, Sizes } = {
+  val amount = do padding()
+  with val area = element(bounds { content } + (amount * 2.0))
+  arrange([Rect(area.origin + amount, area.size - (amount * 2.0))]) { content }
+}
+
+def background { content: => Unit / allocate }: Unit / { allocate, canvas, Colors } = {
+  with val area = element(bounds { content })
+  do canvas().geometry.rectangle(area, do backgroundColor())
+  arrange([area]) { content }
+}
+
+// --- elements ---
+
+/// `at` in [0.0, 1.0]x[0.0, 1.0]
+def anchor(area: Rect, size: Vector, at: Vector): Vector =
+  area.origin + ((area.size - size) * at)
+
+def label(text: String, size: Int, at: Vector): Unit / { allocate, canvas, Sizes, Colors } = {
+  val Canvas(surface, font) = do canvas()
+  val extent = Vector(text.width(size), size.toDouble)
+  with val area = element(extent + (do padding() * 2.0))
+  surface.write(area.anchor(extent, at), size, text, do textColor())
+}
+
+def button[Ev](event: Ev, caption: String): Unit / { allocate, canvas, click[Ev], Sizes, Colors } = {
+  val size = do fontSize()
+  val Canvas(surface, font) = do canvas()
+  val extent = Vector(caption.width(size), size.toDouble)
+  with val area = element(extent + (do padding() * 2.0))
+  do click(area, event)
+  surface.rectangle(area, do backgroundColor())
+  surface.write(area.anchor(extent, align::center), size, caption, do textColor())
+}
+
+def layouting[Ev](window: Window, ?font: Font) { handle: Ev => Unit } { view: => Unit / { allocate, canvas, click[Ev], Sizes, Colors } }: Unit / { WindowManager, Apps, Sizes, Colors, Exception[MissingValue] } = {
+  var body = Vector(0.0, 0.0).inBody(window)
+
+  def propagate[R](pointer: Option[Vector]) { content: => R / { canvas, click[Ev] } }: R =
+    try content()
+    with click[Ev] { (area, event) =>
+      resume(pointer match {
+        case Some(at) and area.contains?(at) => handle(event)
+        case _ => ()
+      })
+    }
+    with canvas { () => resume(Canvas(body.geometry, font)) }
+
+  def render(pointer: Option[Vector]): Unit = {
+    body.geometry.fill(do backgroundColor())
+    with propagate(pointer)
+    arrange([body.geometry.bounds]) { view() }
+    // do dirty(window, body)
+  }
+
+  def resized(size: Vector): Unit = {
+    do remove(window, body)
+    body = size.inBody(window)
+    render(None())
+  }
+
+  def clicked(position: Vector): Unit = {
+    render(Some(position - INSET))
+    render(None())
+  }
+
+  val size = propagate[Vector](None()) { bounds { view() } }
+  do resize(window, size + INSET)
+  resized(size)
+
+  try listen([OnResize(), OnClick(), OnExit()])
+  with event {
+    case Click(position) => resume(clicked(position))
+    case Resize(size) => resume(resized(size - INSET))
+    case Exit() => do destroy(window)
+    case _ => resume(())
+  }
+}

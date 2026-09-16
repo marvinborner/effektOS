@@ -8,6 +8,8 @@ def infixPlus(v: Vector, s: Double) = Vector(v.x + s, v.y + s)
 def infixMinus(v: Vector, s: Double) = Vector(v.x - s, v.y - s)
 def infixStar(v: Vector, s: Double) = Vector(v.x * s, v.y * s)
 def infixSlash(v: Vector, s: Double) = Vector(v.x / s, v.y / s)
+def infixStar(v1: Vector, v2: Vector) = Vector(v1.x * v2.x, v1.y * v2.y)
+def infixSlash(v1: Vector, v2: Vector) = Vector(v1.x / v2.x, v1.y / v2.y)
 
 def infixEq(v1: Vector, v2: Vector) = v1.x.equal?(v2.x) && v1.y.equal?(v2.y)
 
