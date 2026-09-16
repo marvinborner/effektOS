@@ -10,8 +10,8 @@ import system/process
 
 record Canvas(geometry: Geometry, font: Font)
 
-effect allocate(size: Vector): Option[Rect]
 effect canvas(): Canvas
+effect allocate(size: Vector): Option[Rect]
 effect click[Ev](area: Rect, event: Ev): Unit // TODO: more events
 
 namespace align {
